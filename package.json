@@ -1,0 +1,17 @@
+{
+ "name": "@token-ring/s3-cdn",
+ "version": "0.1.0",
+ "description": "AWS S3 CDN implementation for Token Ring",
+ "dependencies": {
+  "@token-ring/cdn": "0.1.0",
+  "@token-ring/chat": "0.1.0",
+  "@token-ring/registry": "0.1.0",
+  "@aws-sdk/client-s3": "^3.0.0"
+ },
+ "exports": {
+  ".": "./index.ts",
+  "./*": "./*.ts"
+ },
+ "license": "MIT",
+ "type": "module"
+}
