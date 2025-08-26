@@ -4,5 +4,5 @@ export const name = packageJSON.name;
 export const version = packageJSON.version;
 export const description = packageJSON.description;
 
-export {default as S3CDNService} from "./S3CDNService.ts";
-export type {S3CDNConfig} from "./S3CDNService.ts";
+export {default as S3CDNResource} from "./S3CDNResource.ts";
+export type {S3CDNResourceOptions} from "./S3CDNResource.ts";

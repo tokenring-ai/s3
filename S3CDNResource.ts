@@ -1,8 +1,8 @@
 import {S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand} from "@aws-sdk/client-s3";
-import CDNService, {type UploadOptions, type UploadResult, type DeleteResult} from "@token-ring/cdn/CDNService";
-import type {Registry} from "@token-ring/registry";
+import {CDNResource} from "@token-ring/cdn";
+import {type UploadOptions, type UploadResult, type DeleteResult} from "@token-ring/cdn/CDNService";
 
-export interface S3CDNConfig {
+export interface S3CDNResourceOptions {
   bucket: string;
   region?: string;
   accessKeyId?: string;
@@ -10,27 +10,38 @@ export interface S3CDNConfig {
   baseUrl?: string;
 }
 
-export default class S3CDNService extends CDNService {
-  name = "S3CDN";
-  description = "AWS S3 CDN implementation";
-  
+export default class S3CDNResource extends CDNResource {
   private s3Client!: S3Client;
-  private config!: S3CDNConfig;
+  private readonly baseUrl!: string;
+  private readonly bucket!: string;
 
-  constructor(config: S3CDNConfig) {
+  constructor({ bucket, region, baseUrl, secretAccessKey, accessKeyId}: S3CDNResourceOptions) {
     super();
-    this.config = config;
-  }
+    if (!bucket) {
+      throw new Error("S3CDNResource requires a bucket parameter");
+    }
+    if (! accessKeyId) {
+      throw new Error("S3CDNResource requires accessKeyId");
+    }
+    if (! secretAccessKey) {
+      throw new Error("S3CDNResource requires secretAccessKey");
+    }
+    if (! region) {
+      throw new Error("S3CDNResource requires region");
+    }
+    if (! baseUrl) {
+      baseUrl = `https://${bucket}.s3.amazonaws.com`;
+    }
 
-  async start(registry: Registry): Promise<void> {
-    await super.start(registry);
-    
+    this.bucket = bucket;
+    this.baseUrl = baseUrl;
+
     this.s3Client = new S3Client({
-      region: this.config.region || "us-east-1",
-      credentials: this.config.accessKeyId && this.config.secretAccessKey ? {
-        accessKeyId: this.config.accessKeyId,
-        secretAccessKey: this.config.secretAccessKey,
-      } : undefined,
+      region,
+      credentials: {
+        accessKeyId,
+        secretAccessKey
+      }
     });
   }
 
@@ -38,7 +49,7 @@ export default class S3CDNService extends CDNService {
     const key = options?.filename || `${Date.now()}-${Math.random().toString(36).substring(7)}`;
     
     const command = new PutObjectCommand({
-      Bucket: this.config.bucket,
+      Bucket: this.bucket,
       Key: key,
       Body: data,
       ContentType: options?.contentType,
@@ -47,9 +58,7 @@ export default class S3CDNService extends CDNService {
 
     await this.s3Client.send(command);
 
-    const url = this.config.baseUrl 
-      ? `${this.config.baseUrl}/${key}`
-      : `https://${this.config.bucket}.s3.amazonaws.com/${key}`;
+    const url = `${this.baseUrl}/${key}`;
 
     return {
       url,
@@ -63,7 +72,7 @@ export default class S3CDNService extends CDNService {
       const key = this.extractKeyFromUrl(url);
       
       const command = new DeleteObjectCommand({
-        Bucket: this.config.bucket,
+        Bucket: this.bucket,
         Key: key,
       });
 
@@ -86,7 +95,7 @@ export default class S3CDNService extends CDNService {
       const key = this.extractKeyFromUrl(url);
       
       const command = new HeadObjectCommand({
-        Bucket: this.config.bucket,
+        Bucket: this.bucket,
         Key: key,
       });
 
@@ -97,25 +106,9 @@ export default class S3CDNService extends CDNService {
     }
   }
 
-  async getMetadata(url: string): Promise<Record<string, any> | null> {
-    try {
-      const key = this.extractKeyFromUrl(url);
-      
-      const command = new HeadObjectCommand({
-        Bucket: this.config.bucket,
-        Key: key,
-      });
-
-      const response = await this.s3Client.send(command);
-      return response.Metadata || null;
-    } catch {
-      return null;
-    }
-  }
-
   private extractKeyFromUrl(url: string): string {
-    if (this.config.baseUrl && url.startsWith(this.config.baseUrl)) {
-      return url.substring(this.config.baseUrl.length + 1);
+    if (url.startsWith(this.baseUrl)) {
+      return url.substring(this.baseUrl.length + 1);
     }
     
     // Extract from standard S3 URL
