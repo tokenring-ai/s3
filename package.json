@@ -1,7 +1,7 @@
 {
- "name": "@token-ring/s3-cdn",
+ "name": "@token-ring/s3",
  "version": "0.1.0",
- "description": "AWS S3 CDN implementation for Token Ring",
+ "description": "AWS S3 implementation for Token Ring",
  "dependencies": {
   "@token-ring/cdn": "0.1.0",
   "@token-ring/chat": "0.1.0",
