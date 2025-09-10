@@ -5,19 +5,20 @@ import {
   HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
-  S3Client, S3ClientConfigType,
+  S3Client,
+  S3ClientConfigType,
 } from "@aws-sdk/client-s3";
 
 import FileSystemProvider, {
-  StatLike,
   DirectoryTreeOptions,
-  GlobOptions,
-  WatchOptions,
   ExecuteCommandOptions,
   ExecuteCommandResult,
+  GlobOptions,
   GrepOptions,
-  GrepResult
-} from "@token-ring/filesystem/FileSystemProvider";
+  GrepResult,
+  StatLike,
+  WatchOptions
+} from "@tokenring-ai/filesystem/FileSystemProvider";
 
 export interface S3FileSystemProviderOptions {
   bucketName: string;
@@ -30,7 +31,6 @@ export default class S3FileSystemProvider extends FileSystemProvider {
 
   constructor({bucketName, clientConfig}: S3FileSystemProviderOptions) {
     super();
-
     if (!bucketName) {
       throw new Error("S3FileSystem requires a 'bucketName'.");
     }
@@ -223,7 +223,7 @@ export default class S3FileSystemProvider extends FileSystemProvider {
   }
 
   async* getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
-    const { ignoreFilter, recursive = true } = params || {};
+    const {ignoreFilter, recursive = true} = params || {};
     const s3Prefix = this._s3Key(fsPath);
     const normalizedPrefix = s3Prefix === "" ? "" : s3Prefix.endsWith("/") ? s3Prefix : s3Prefix + "/";
     let continuationToken: string | undefined = undefined;
@@ -261,7 +261,7 @@ export default class S3FileSystemProvider extends FileSystemProvider {
   }
 
   async createDirectory(fsPath: string, options: { recursive?: boolean } = {}): Promise<boolean> {
-    
+
     let s3Key = this._s3Key(fsPath);
     if (s3Key === "") {
       return true;
@@ -294,7 +294,7 @@ export default class S3FileSystemProvider extends FileSystemProvider {
   }
 
   async rename(oldPath: string, newPath: string): Promise<boolean> {
-    await this.copy(oldPath, newPath, { overwrite: true });
+    await this.copy(oldPath, newPath, {overwrite: true});
     await this.deleteFile(oldPath);
     return true;
   }

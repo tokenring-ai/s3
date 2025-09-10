@@ -1,6 +1,6 @@
-import {S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand} from "@aws-sdk/client-s3";
-import {CDNResource} from "@token-ring/cdn";
-import {type UploadOptions, type UploadResult, type DeleteResult} from "@token-ring/cdn/CDNService";
+import {DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client} from "@aws-sdk/client-s3";
+import {CDNResource} from "@tokenring-ai/cdn";
+import {type DeleteResult, type UploadOptions, type UploadResult} from "@tokenring-ai/cdn/CDNService";
 
 export interface S3CDNResourceOptions {
   bucket: string;
@@ -15,21 +15,21 @@ export default class S3CDNResource extends CDNResource {
   private readonly baseUrl!: string;
   private readonly bucket!: string;
 
-  constructor({ bucket, region, baseUrl, secretAccessKey, accessKeyId}: S3CDNResourceOptions) {
+  constructor({bucket, region, baseUrl, secretAccessKey, accessKeyId}: S3CDNResourceOptions) {
     super();
     if (!bucket) {
       throw new Error("S3CDNResource requires a bucket parameter");
     }
-    if (! accessKeyId) {
+    if (!accessKeyId) {
       throw new Error("S3CDNResource requires accessKeyId");
     }
-    if (! secretAccessKey) {
+    if (!secretAccessKey) {
       throw new Error("S3CDNResource requires secretAccessKey");
     }
-    if (! region) {
+    if (!region) {
       throw new Error("S3CDNResource requires region");
     }
-    if (! baseUrl) {
+    if (!baseUrl) {
       baseUrl = `https://${bucket}.s3.amazonaws.com`;
     }
 
@@ -47,7 +47,7 @@ export default class S3CDNResource extends CDNResource {
 
   async upload(data: Buffer, options?: UploadOptions): Promise<UploadResult> {
     const key = options?.filename || `${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    
+
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -70,7 +70,7 @@ export default class S3CDNResource extends CDNResource {
   async delete(url: string): Promise<DeleteResult> {
     try {
       const key = this.extractKeyFromUrl(url);
-      
+
       const command = new DeleteObjectCommand({
         Bucket: this.bucket,
         Key: key,
@@ -93,7 +93,7 @@ export default class S3CDNResource extends CDNResource {
   async exists(url: string): Promise<boolean> {
     try {
       const key = this.extractKeyFromUrl(url);
-      
+
       const command = new HeadObjectCommand({
         Bucket: this.bucket,
         Key: key,
@@ -110,7 +110,7 @@ export default class S3CDNResource extends CDNResource {
     if (url.startsWith(this.baseUrl)) {
       return url.substring(this.baseUrl.length + 1);
     }
-    
+
     // Extract from standard S3 URL
     const match = url.match(/amazonaws\.com\/(.+)$/);
     return match ? match[1] : url;

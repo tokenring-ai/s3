@@ -1,12 +1,14 @@
 {
- "name": "@token-ring/s3",
+ "name": "@tokenring-ai/s3",
  "version": "0.1.0",
  "description": "AWS S3 implementation for Token Ring",
  "dependencies": {
-  "@token-ring/cdn": "0.1.0",
-  "@token-ring/chat": "0.1.0",
-  "@token-ring/registry": "0.1.0",
+  "@tokenring-ai/agent": "0.1.0",
   "@aws-sdk/client-s3": "^3.0.0"
+ },
+ "peerDependencies": {
+  "@tokenring-ai/cdn": "0.1.0",
+  "@tokenring-ai/filesystem": "0.1.0"
  },
  "exports": {
   ".": "./index.ts",

@@ -1,11 +1,11 @@
-# @token-ring/s3
+# @tokenring-ai/s3
 
 AWS S3 CDN implementation for Token Ring.
 
 ## Usage
 
 ```typescript
-import {S3CDNService} from "@token-ring/s3";
+import {S3CDNService} from "@tokenring-ai/s3";
 
 const s3CDN = new S3CDNService({
   bucket: "my-bucket",
