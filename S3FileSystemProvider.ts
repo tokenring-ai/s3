@@ -251,12 +251,12 @@ export default class S3FileSystemProvider extends FileSystemProvider {
           }
 
           if (!ignoreFilter || !ignoreFilter(item.Key)) {
-            yield item.Key as string;
+            yield item.Key;
           }
         }
       }
 
-      continuationToken = response.NextContinuationToken as string | undefined;
+      continuationToken = response.NextContinuationToken | undefined;
     } while (continuationToken);
   }
 
