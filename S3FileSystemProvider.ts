@@ -256,7 +256,7 @@ export default class S3FileSystemProvider extends FileSystemProvider {
         }
       }
 
-      continuationToken = response.NextContinuationToken | undefined;
+      continuationToken = response.NextContinuationToken;
     } while (continuationToken);
   }
 
