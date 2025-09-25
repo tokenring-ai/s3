@@ -1,8 +1,8 @@
 import {DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client} from "@aws-sdk/client-s3";
-import {CDNResource} from "@tokenring-ai/cdn";
+import {CDNProvider} from "@tokenring-ai/cdn";
 import {type DeleteResult, type UploadOptions, type UploadResult} from "@tokenring-ai/cdn/CDNService";
 
-export interface S3CDNResourceOptions {
+export interface S3CDNProviderOptions {
   bucket: string;
   region?: string;
   accessKeyId?: string;
@@ -10,24 +10,24 @@ export interface S3CDNResourceOptions {
   baseUrl?: string;
 }
 
-export default class S3CDNResource extends CDNResource {
+export default class S3CDNProvider extends CDNProvider {
   private s3Client!: S3Client;
   private readonly baseUrl!: string;
   private readonly bucket!: string;
 
-  constructor({bucket, region, baseUrl, secretAccessKey, accessKeyId}: S3CDNResourceOptions) {
+  constructor({bucket, region, baseUrl, secretAccessKey, accessKeyId}: S3CDNProviderOptions) {
     super();
     if (!bucket) {
-      throw new Error("S3CDNResource requires a bucket parameter");
+      throw new Error("S3CDNProvider requires a bucket parameter");
     }
     if (!accessKeyId) {
-      throw new Error("S3CDNResource requires accessKeyId");
+      throw new Error("S3CDNProvider requires accessKeyId");
     }
     if (!secretAccessKey) {
-      throw new Error("S3CDNResource requires secretAccessKey");
+      throw new Error("S3CDNProvider requires secretAccessKey");
     }
     if (!region) {
-      throw new Error("S3CDNResource requires region");
+      throw new Error("S3CDNProvider requires region");
     }
     if (!baseUrl) {
       baseUrl = `https://${bucket}.s3.amazonaws.com`;
