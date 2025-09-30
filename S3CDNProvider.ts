@@ -1,6 +1,6 @@
 import {DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client} from "@aws-sdk/client-s3";
 import {CDNProvider} from "@tokenring-ai/cdn";
-import {type DeleteResult, type UploadOptions, type UploadResult} from "@tokenring-ai/cdn/CDNService";
+import {DeleteResult, UploadOptions, UploadResult} from "@tokenring-ai/cdn/types";
 
 export interface S3CDNProviderOptions {
   bucket: string;
