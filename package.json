@@ -4,7 +4,7 @@
  "description": "AWS S3 implementation for Token Ring",
  "dependencies": {
   "@tokenring-ai/agent": "0.1.0",
-  "@aws-sdk/client-s3": "^3.0.0"
+  "@aws-sdk/client-s3": "^3.899.0"
  },
  "peerDependencies": {
   "@tokenring-ai/cdn": "0.1.0",
