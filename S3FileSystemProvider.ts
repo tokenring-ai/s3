@@ -25,12 +25,11 @@ export interface S3FileSystemProviderOptions {
   clientConfig?: S3ClientConfigType;
 }
 
-export default class S3FileSystemProvider extends FileSystemProvider {
+export default class S3FileSystemProvider implements FileSystemProvider {
   private readonly bucketName: string;
   private s3Client!: S3Client;
 
   constructor({bucketName, clientConfig}: S3FileSystemProviderOptions) {
-    super();
     if (!bucketName) {
       throw new Error("S3FileSystem requires a 'bucketName'.");
     }
@@ -97,17 +96,6 @@ export default class S3FileSystemProvider extends FileSystemProvider {
     }
 
     return response.Body.transformToString(encoding);
-  }
-
-  async getFile(fsPath: string): Promise<string | null> {
-    try {
-      return await this.readFile(fsPath, "utf8");
-    } catch (error: any) {
-      if (error.name === "NoSuchKey" || error.name === "NotFound" || error.$metadata?.httpStatusCode === 404) {
-        return null;
-      }
-      throw error;
-    }
   }
 
   async deleteFile(fsPath: string): Promise<boolean> {
