@@ -6,7 +6,6 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
-  S3ClientConfigType,
 } from "@aws-sdk/client-s3";
 
 import FileSystemProvider, {
@@ -19,11 +18,14 @@ import FileSystemProvider, {
   StatLike,
   WatchOptions
 } from "@tokenring-ai/filesystem/FileSystemProvider";
+import {z} from "zod";
 
-export interface S3FileSystemProviderOptions {
-  bucketName: string;
-  clientConfig?: S3ClientConfigType;
-}
+export const S3FileSystemProviderOptionsSchema = z.object({
+  bucketName: z.string(),
+  clientConfig: z.any().optional(),
+});
+
+export type S3FileSystemProviderOptions = z.infer<typeof S3FileSystemProviderOptionsSchema>;
 
 export default class S3FileSystemProvider implements FileSystemProvider {
   private readonly bucketName: string;

@@ -1,14 +1,17 @@
 import {DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client} from "@aws-sdk/client-s3";
 import {CDNProvider} from "@tokenring-ai/cdn";
 import {DeleteResult, UploadOptions, UploadResult} from "@tokenring-ai/cdn/types";
+import {z} from "zod";
 
-export interface S3CDNProviderOptions {
-  bucket: string;
-  region?: string;
-  accessKeyId?: string;
-  secretAccessKey?: string;
-  baseUrl?: string;
-}
+export const S3CDNProviderOptionsSchema = z.object({
+  bucket: z.string(),
+  region: z.string().optional(),
+  accessKeyId: z.string().optional(),
+  secretAccessKey: z.string().optional(),
+  baseUrl: z.string().optional(),
+});
+
+export type S3CDNProviderOptions = z.infer<typeof S3CDNProviderOptionsSchema>;
 
 export default class S3CDNProvider extends CDNProvider {
   private s3Client!: S3Client;
