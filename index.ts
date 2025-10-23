@@ -6,7 +6,7 @@ import packageJSON from './package.json' with {type: 'json'};
 import S3CDNProvider, {S3CDNProviderOptionsSchema} from "./S3CDNProvider.js";
 import S3FileSystemProvider, {S3FileSystemProviderOptionsSchema} from "./S3FileSystemProvider.js";
 
-export const packageInfo: TokenRingPackage = {
+export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
@@ -37,7 +37,7 @@ export const packageInfo: TokenRingPackage = {
       });
     }
   },
-};
+} as TokenRingPackage;
 
 export {default as S3CDNProvider} from "./S3CDNProvider.ts";
 export {default as S3FileSystemProvider} from "./S3FileSystemProvider.ts";
