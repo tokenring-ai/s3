@@ -14,7 +14,7 @@ export default {
     const cdnConfig = agentTeam.getConfigSlice("cdn", CDNConfigSchema);
 
     if (cdnConfig) {
-      agentTeam.services.waitForItemByType(CDNService).then(cdnService => {
+      agentTeam.waitForService(CDNService, cdnService => {
         for (const name in cdnConfig.providers) {
           const provider = cdnConfig.providers[name];
           if (provider.type === "s3") {
@@ -27,7 +27,7 @@ export default {
     const filesystemConfig = agentTeam.getConfigSlice("filesystem", FileSystemConfigSchema);
 
     if (filesystemConfig) {
-      agentTeam.services.waitForItemByType(FileSystemService).then(fileSystemService => {
+      agentTeam.waitForService(FileSystemService, fileSystemService => {
         for (const name in filesystemConfig.providers) {
           const provider = filesystemConfig.providers[name];
           if (provider.type === "s3") {
