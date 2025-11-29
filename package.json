@@ -1,14 +1,16 @@
 {
  "name": "@tokenring-ai/s3",
- "version": "0.1.0",
+ "version": "0.2.0",
  "description": "AWS S3 implementation for Token Ring",
  "dependencies": {
-  "@tokenring-ai/agent": "0.1.0",
-  "@aws-sdk/client-s3": "^3.937.0"
+  "@tokenring-ai/app": "0.2.0",
+  "zod": "^4.1.13",
+  "@tokenring-ai/agent": "0.2.0",
+  "@aws-sdk/client-s3": "^3.940.0"
  },
  "peerDependencies": {
-  "@tokenring-ai/cdn": "0.1.0",
-  "@tokenring-ai/filesystem": "0.1.0"
+  "@tokenring-ai/cdn": "0.2.0",
+  "@tokenring-ai/filesystem": "0.2.0"
  },
  "exports": {
   ".": "./index.ts",
