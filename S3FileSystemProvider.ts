@@ -39,11 +39,6 @@ export default class S3FileSystemProvider implements FileSystemProvider {
 
     this.s3Client = new S3Client(clientConfig || {});
   }
-
-  getBaseDirectory(): string {
-    return `s3://${this.bucketName}/`;
-  }
-
   relativeOrAbsolutePathToAbsolutePath(p: string): string {
     if (p.startsWith('s3://')) {
       return p;
