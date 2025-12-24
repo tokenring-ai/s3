@@ -14,13 +14,13 @@ This package is designed to integrate seamlessly with Token Ring's filesystem an
 ## Installation
 
 ```bash
-npm install @tokenring-ai/s3
+bun install @tokenring-ai/s3
 ```
 
 ### Required Peer Dependencies
 
 ```bash
-npm install @tokenring-ai/cdn @tokenring-ai/filesystem
+bun install @tokenring-ai/cdn @tokenring-ai/filesystem
 ```
 
 ### AWS Configuration
@@ -42,9 +42,10 @@ The package requires AWS credentials. You can configure them in several ways:
 
 ```
 pkg/s3/
-├── index.ts              # Main entry point and plugin registration
+├── index.ts              # Main entry point and exports
 ├── S3FileSystemProvider.ts # S3 filesystem implementation
 ├── S3CDNProvider.ts      # S3 CDN provider implementation
+├── plugin.ts             # Token Ring plugin integration
 ├── package.json          # Package metadata and dependencies
 ├── README.md             # This documentation
 └── LICENSE               # MIT license
@@ -342,6 +343,11 @@ export type { S3CDNProviderOptions }
 - `rename(oldPath: string, newPath: string): Promise<boolean>`
 - `createDirectory(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>`
 - `getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>`
+- `chmod(_path: string, _mode: number): Promise<boolean>` - Not supported
+- `watch(_dir: string, _options?: WatchOptions): Promise<any>` - Not supported
+- `executeCommand(_command: string | string[], _options?: ExecuteCommandOptions): Promise<ExecuteCommandResult>` - Not supported
+- `glob(_pattern: string, _options?: GlobOptions): Promise<string[]>` - Not fully supported
+- `grep(_searchString: string | string[], _options?: GrepOptions): Promise<GrepResult[]>` - Not supported
 
 #### S3CDNProvider
 
@@ -353,13 +359,13 @@ export type { S3CDNProviderOptions }
 
 ### Direct Dependencies
 
-- `@tokenring-ai/agent: ^0.1.0`
-- `@aws-sdk/client-s3: ^3.937.0`
+- `@tokenring-ai/agent: ^0.2.0`
+- `@aws-sdk/client-s3: ^3.952.0`
 
 ### Peer Dependencies
 
-- `@tokenring-ai/cdn: ^0.1.0`
-- `@tokenring-ai/filesystem: ^0.1.0`
+- `@tokenring-ai/cdn: ^0.2.0`
+- `@tokenring-ai/filesystem: ^0.2.0`
 
 ## Error Handling
 
@@ -404,8 +410,8 @@ export AWS_SECRET_ACCESS_KEY=test-secret
 export AWS_REGION=us-east-1
 export TEST_BUCKET=test-bucket-name
 
-# Run tests (assuming test framework is set up)
-npm test
+# Run tests
+bun run test
 ```
 
 ## License
