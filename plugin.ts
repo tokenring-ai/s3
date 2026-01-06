@@ -1,7 +1,7 @@
 import {TokenRingPlugin} from "@tokenring-ai/app";
 import {CDNConfigSchema, CDNService} from "@tokenring-ai/cdn";
-import {FileSystemConfigSchema} from "@tokenring-ai/filesystem";
 import FileSystemService from "@tokenring-ai/filesystem/FileSystemService";
+import {FileSystemConfigSchema} from "@tokenring-ai/filesystem/schema";
 import {z} from "zod";
 import packageJSON from './package.json' with {type: 'json'};
 import S3CDNProvider, {S3CDNProviderOptionsSchema} from "./S3CDNProvider.js";
