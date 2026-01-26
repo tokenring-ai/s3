@@ -144,6 +144,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
       }
       const response: any = await this.s3Client.send(command);
       return {
+        exists: true,
         path: fsPath,
         absolutePath: this.relativeOrAbsolutePathToAbsolutePath(fsPath),
         isFile: true,
@@ -169,6 +170,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
           originalS3Key === ""
         ) {
           return {
+            exists: true,
             path: fsPath,
             absolutePath: this.relativeOrAbsolutePathToAbsolutePath(fsPath),
             isFile: false,
@@ -180,7 +182,11 @@ export default class S3FileSystemProvider implements FileSystemProvider {
             accessed: undefined,
           };
         }
-        throw new Error(`Path not found: ${fsPath}`);
+
+        return {
+          exists: false,
+          path: fsPath,
+        };
       }
       throw error;
     }
@@ -246,7 +252,6 @@ export default class S3FileSystemProvider implements FileSystemProvider {
   }
 
   async createDirectory(fsPath: string, options: { recursive?: boolean } = {}): Promise<boolean> {
-
     let s3Key = this._s3Key(fsPath);
     if (s3Key === "") {
       return true;
@@ -255,22 +260,14 @@ export default class S3FileSystemProvider implements FileSystemProvider {
       s3Key += "/";
     }
 
-    try {
-      const existingStat = await this.stat(s3Key);
-      if (existingStat.isDirectory) {
-        return true;
-      }
-    } catch (error: any) {
-      if (!error.message?.startsWith("Path not found:")) {
-        throw error;
-      }
+    const existingStat = await this.stat(s3Key);
+    if (existingStat.exists) {
+      if (existingStat.isDirectory) return true;
+
+      throw new Error(`Path already exists and is not a directory: ${fsPath}`);
     }
-    const command = new PutObjectCommand({
-      Bucket: this.bucketName,
-      Key: s3Key,
-      Body: "",
-    });
-    await this.s3Client.send(command);
+
+    // S3 does not have directories, they are created automatically
     return true;
   }
 
