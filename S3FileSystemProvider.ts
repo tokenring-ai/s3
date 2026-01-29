@@ -10,8 +10,6 @@ import {
 
 import FileSystemProvider, {
   DirectoryTreeOptions,
-  ExecuteCommandOptions,
-  ExecuteCommandResult,
   GlobOptions,
   GrepOptions,
   GrepResult,
@@ -283,10 +281,6 @@ export default class S3FileSystemProvider implements FileSystemProvider {
 
   async watch(_dir: string, _options?: WatchOptions): Promise<any> {
     throw new Error("Method watch is not supported by S3FileSystem.");
-  }
-
-  async executeCommand(_command: string | string[], _options?: ExecuteCommandOptions): Promise<ExecuteCommandResult> {
-    throw new Error("Method executeCommand is not supported by S3FileSystem.");
   }
 
   async glob(_pattern: string, _options?: GlobOptions): Promise<string[]> {
