@@ -6,7 +6,7 @@
     "@tokenring-ai/app": "0.2.0",
     "zod": "catalog:",
     "@tokenring-ai/agent": "0.2.0",
-    "@aws-sdk/client-s3": "^3.967.0"
+    "@aws-sdk/client-s3": "^3.978.0"
   },
   "peerDependencies": {
     "@tokenring-ai/cdn": "0.2.0",
