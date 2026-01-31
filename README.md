@@ -1,10 +1,12 @@
 # @tokenring-ai/s3
 
-## Overview
-
 AWS S3 integration package for the Token Ring AI ecosystem, providing both filesystem and CDN functionality through a unified interface. This package integrates seamlessly with Token Ring's filesystem and CDN modules, handling S3-specific details like path normalization, error handling, and directory simulation using S3 prefixes.
 
-## Features
+## Overview
+
+The `@tokenring-ai/s3` package provides comprehensive AWS S3 integration for cloud storage and content delivery in the Token Ring AI system. It implements both CDN (Content Delivery Network) and File System providers for seamless cloud storage and content delivery.
+
+### Key Features
 
 - **Filesystem Provider**: Treats S3 buckets as a virtual filesystem with read, write, delete, and directory operations
 - **CDN Provider**: Upload, manage, and serve content from S3 buckets with CDN capabilities
@@ -18,6 +20,18 @@ AWS S3 integration package for the Token Ring AI ecosystem, providing both files
 
 ```bash
 bun install @tokenring-ai/s3
+```
+
+## Package Structure
+
+```
+pkg/s3/
+├── index.ts              # Main entry point and exports
+├── plugin.ts             # Plugin integration logic
+├── S3CDNProvider.ts      # CDN provider implementation
+├── S3FileSystemProvider.ts # File system provider implementation
+├── package.json         # Package configuration and dependencies
+└── vitest.config.ts     # Testing configuration
 ```
 
 ## Core Components
@@ -171,7 +185,7 @@ interface PackageConfig {
 }
 ```
 
-### Usage with Token Ring App
+### Configuration Example
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app'
