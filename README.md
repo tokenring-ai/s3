@@ -221,40 +221,100 @@ app.registerPlugin(s3Plugin)
 await app.start()
 ```
 
-## API Reference
+## Services
 
-### S3FileSystemProvider
+### CDN Service
 
-#### Methods
+The package registers `S3CDNProvider` instances with `CDNService`:
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `writeFile` | `(fsPath: string, content: string \| Buffer): Promise<boolean>` | Write content to a file |
-| `appendFile` | `(filePath: string, content: string \| Buffer): Promise<boolean>` | Append content to an existing file or create if not exists |
-| `readFile` | `(fsPath: string, encoding?: BufferEncoding \| "buffer"): Promise<any>` | Read file content with optional encoding |
-| `deleteFile` | `(fsPath: string): Promise<boolean>` | Delete a file |
-| `exists` | `(fsPath: string): Promise<boolean>` | Check if file or directory exists |
-| `stat` | `(fsPath: string): Promise<StatLike>` | Get file/directory statistics |
-| `copy` | `(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>` | Copy a file |
-| `rename` | `(oldPath: string, newPath: string): Promise<boolean>` | Rename a file |
-| `createDirectory` | `(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>` | Create a directory |
-| `getDirectoryTree` | `(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>` | Iterate directory contents |
-| `relativeOrAbsolutePathToAbsolutePath` | `(p: string): string` | Convert path to absolute S3 URI |
-| `relativeOrAbsolutePathToRelativePath` | `(p: string): string` | Convert path to bucket-relative format |
+**Registration:**
+- Automatically registers with CDNService when CDN configuration is provided
+- Uses `CDNConfigSchema` for configuration validation
 
-#### Not Supported
+**Provider Interface:**
+```typescript
+interface CDNProvider {
+  upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>;
+  delete(url: string): Promise<DeleteResult>;
+  exists(url: string): Promise<boolean>;
+}
+```
 
-- `chmod()`, `watch()`, `executeCommand()`, `glob()`, `grep()`
+### File System Service
+
+The package registers `S3FileSystemProvider` instances with `FileSystemService`:
+
+**Registration:**
+- Automatically registers with FileSystemService when filesystem configuration is provided
+- Uses `FileSystemConfigSchema` for configuration validation
+
+**Provider Interface:**
+```typescript
+interface FileSystemProvider {
+  writeFile(fsPath: string, content: string | Buffer): Promise<boolean>;
+  appendFile(filePath: string, content: string | Buffer): Promise<boolean>;
+  readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<any>;
+  deleteFile(fsPath: string): Promise<boolean>;
+  exists(fsPath: string): Promise<boolean>;
+  stat(fsPath: string): Promise<StatLike>;
+  createDirectory(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>;
+  getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>;
+  copy(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>;
+  rename(oldPath: string, newPath: string): Promise<boolean>;
+}
+```
+
+## Provider Documentation
 
 ### S3CDNProvider
 
-#### Methods
+AWS S3 integration for CDN services, providing content delivery capabilities.
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `upload` | `(data: Buffer, options?: UploadOptions): Promise<UploadResult>` | Upload data with optional metadata |
-| `delete` | `(url: string): Promise<DeleteResult>` | Delete a resource by URL |
-| `exists` | `(url: string): Promise<boolean>` | Check if resource exists |
+**Configuration Schema:** `S3CDNProviderOptionsSchema`
+- `bucket`: S3 bucket name
+- `region`: AWS region (e.g., 'us-east-1')
+- `accessKeyId`: AWS access key ID
+- `secretAccessKey`: AWS secret access key
+- `baseUrl`: Custom base URL (optional, defaults to `https://{bucket}.s3.amazonaws.com`)
+
+**Provider Interface:**
+```typescript
+interface S3CDNProviderOptions {
+  bucket: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  baseUrl?: string;
+}
+```
+
+### S3FileSystemProvider
+
+S3-backed file system provider with complete file operations.
+
+**Configuration Schema:** `S3FileSystemProviderOptionsSchema`
+- `bucketName`: S3 bucket name
+- `clientConfig`: AWS SDK client configuration (optional)
+
+**Provider Interface:**
+```typescript
+interface S3FileSystemProviderOptions {
+  bucketName: string;
+  clientConfig?: Record<string, unknown>;
+}
+```
+
+## RPC Endpoints
+
+This package does not define any RPC endpoints.
+
+## State Management
+
+This package does not manage state directly. It relies on the Token Ring state management system through services.
+
+## Scripting Integration
+
+This package does not register functions with the ScriptingService.
 
 ## Usage Examples
 
@@ -367,6 +427,13 @@ interface S3CDNProviderOptions {
 
 - `@tokenring-ai/cdn: 0.2.0`
 - `@tokenring-ai/filesystem: 0.2.0`
+
+### Dependencies
+
+- `@aws-sdk/client-s3: ^3.992.0`
+- `@tokenring-ai/agent: 0.2.0`
+- `@tokenring-ai/app: 0.2.0`
+- `zod: ^4.3.6`
 
 ## Security Considerations
 
