@@ -123,7 +123,7 @@ await provider.rename('old-name.txt', 'new-name.txt')
 
 ### S3CDNProvider
 
-A CDN provider for uploading and managing content in S3 buckets.
+A CDN provider for uploading and managing content in S3 buckets. Extends the base `CDNProvider` class.
 
 #### Constructor
 
@@ -157,9 +157,58 @@ const deleteResult = await provider.delete('https://bucket.s3.amazonaws.com/file
 const exists = await provider.exists('https://bucket.s3.amazonaws.com/file.txt')
 ```
 
-## Plugin Configuration
+## Services
+
+### CDN Service
+
+The package registers `S3CDNProvider` instances with `CDNService`:
+
+**Registration:**
+- Automatically registers with CDNService when CDN configuration is provided via plugin
+- Uses `CDNConfigSchema` for configuration validation
+- Providers are registered with the name specified in the configuration
+
+**Provider Interface:**
+```typescript
+interface CDNProvider {
+  upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>;
+  delete(url: string): Promise<DeleteResult>;
+  exists(url: string): Promise<boolean>;
+}
+```
+
+### File System Service
+
+The package registers `S3FileSystemProvider` instances with `FileSystemService`:
+
+**Registration:**
+- Automatically registers with FileSystemService when filesystem configuration is provided via plugin
+- Uses `FileSystemConfigSchema` for configuration validation
+- Providers are registered with the name specified in the configuration
+
+**Provider Interface:**
+```typescript
+interface FileSystemProvider {
+  writeFile(fsPath: string, content: string | Buffer): Promise<boolean>;
+  appendFile(filePath: string, content: string | Buffer): Promise<boolean>;
+  readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<any>;
+  deleteFile(fsPath: string): Promise<boolean>;
+  exists(fsPath: string): Promise<boolean>;
+  stat(fsPath: string): Promise<StatLike>;
+  createDirectory(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>;
+  getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>;
+  copy(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>;
+  rename(oldPath: string, newPath: string): Promise<boolean>;
+}
+```
+
+## Plugin Documentation
 
 This package provides a Token Ring plugin that automatically registers S3 providers with the CDN and filesystem services.
+
+### Plugin Name
+
+`@tokenring-ai/s3`
 
 ### Plugin Options Schema
 
@@ -185,7 +234,7 @@ interface PackageConfig {
 }
 ```
 
-### Configuration Example
+### Plugin Registration
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app'
@@ -221,49 +270,6 @@ app.registerPlugin(s3Plugin)
 await app.start()
 ```
 
-## Services
-
-### CDN Service
-
-The package registers `S3CDNProvider` instances with `CDNService`:
-
-**Registration:**
-- Automatically registers with CDNService when CDN configuration is provided
-- Uses `CDNConfigSchema` for configuration validation
-
-**Provider Interface:**
-```typescript
-interface CDNProvider {
-  upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>;
-  delete(url: string): Promise<DeleteResult>;
-  exists(url: string): Promise<boolean>;
-}
-```
-
-### File System Service
-
-The package registers `S3FileSystemProvider` instances with `FileSystemService`:
-
-**Registration:**
-- Automatically registers with FileSystemService when filesystem configuration is provided
-- Uses `FileSystemConfigSchema` for configuration validation
-
-**Provider Interface:**
-```typescript
-interface FileSystemProvider {
-  writeFile(fsPath: string, content: string | Buffer): Promise<boolean>;
-  appendFile(filePath: string, content: string | Buffer): Promise<boolean>;
-  readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<any>;
-  deleteFile(fsPath: string): Promise<boolean>;
-  exists(fsPath: string): Promise<boolean>;
-  stat(fsPath: string): Promise<StatLike>;
-  createDirectory(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>;
-  getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>;
-  copy(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>;
-  rename(oldPath: string, newPath: string): Promise<boolean>;
-}
-```
-
 ## Provider Documentation
 
 ### S3CDNProvider
@@ -271,11 +277,15 @@ interface FileSystemProvider {
 AWS S3 integration for CDN services, providing content delivery capabilities.
 
 **Configuration Schema:** `S3CDNProviderOptionsSchema`
-- `bucket`: S3 bucket name
-- `region`: AWS region (e.g., 'us-east-1')
-- `accessKeyId`: AWS access key ID
-- `secretAccessKey`: AWS secret access key
-- `baseUrl`: Custom base URL (optional, defaults to `https://{bucket}.s3.amazonaws.com`)
+```typescript
+const S3CDNProviderOptionsSchema = z.object({
+  bucket: z.string(),
+  region: z.string().optional(),
+  accessKeyId: z.string().optional(),
+  secretAccessKey: z.string().optional(),
+  baseUrl: z.string().optional(),
+});
+```
 
 **Provider Interface:**
 ```typescript
@@ -288,13 +298,22 @@ interface S3CDNProviderOptions {
 }
 ```
 
+**Key Methods:**
+- `upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>` - Upload data to S3
+- `delete(url: string): Promise<DeleteResult>` - Delete an object by URL
+- `exists(url: string): Promise<boolean>` - Check if an object exists
+
 ### S3FileSystemProvider
 
 S3-backed file system provider with complete file operations.
 
 **Configuration Schema:** `S3FileSystemProviderOptionsSchema`
-- `bucketName`: S3 bucket name
-- `clientConfig`: AWS SDK client configuration (optional)
+```typescript
+const S3FileSystemProviderOptionsSchema = z.object({
+  bucketName: z.string(),
+  clientConfig: z.any().optional(),
+});
+```
 
 **Provider Interface:**
 ```typescript
@@ -304,9 +323,25 @@ interface S3FileSystemProviderOptions {
 }
 ```
 
+**Key Methods:**
+- `writeFile(fsPath: string, content: string | Buffer): Promise<boolean>` - Write file content
+- `readFile(fsPath: string, encoding?: BufferEncoding): Promise<any>` - Read file content
+- `deleteFile(fsPath: string): Promise<boolean>` - Delete a file
+- `exists(fsPath: string): Promise<boolean>` - Check if file/directory exists
+- `stat(fsPath: string): Promise<StatLike>` - Get file/directory statistics
+- `createDirectory(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>` - Create directory
+- `getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>` - List directory contents
+- `copy(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>` - Copy files
+- `rename(oldPath: string, newPath: string): Promise<boolean>` - Rename files
+- `appendFile(filePath: string, content: string | Buffer): Promise<boolean>` - Append to file
+
 ## RPC Endpoints
 
 This package does not define any RPC endpoints.
+
+## Chat Commands
+
+This package does not register any chat commands.
 
 ## State Management
 
@@ -400,6 +435,50 @@ const deleteResult = await cdn.delete(uploadResult.url)
 console.log(`Delete success: ${deleteResult.success}`)
 ```
 
+### Plugin-Based Configuration
+
+```typescript
+import TokenRingApp from '@tokenring-ai/app'
+import s3Plugin from '@tokenring-ai/s3'
+
+const app = new TokenRingApp({
+  config: {
+    cdn: {
+      providers: {
+        s3CDN: {
+          type: 's3',
+          bucket: 'cdn-bucket',
+          region: 'us-west-2',
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
+        }
+      }
+    },
+    filesystem: {
+      providers: {
+        s3Files: {
+          type: 's3',
+          bucketName: 'files-bucket',
+          clientConfig: { region: 'us-west-2' }
+        }
+      }
+    }
+  }
+})
+
+// Register the plugin
+app.registerPlugin(s3Plugin)
+
+await app.start()
+
+// Access the registered providers
+const cdnService = await app.getService(CDNService)
+const cdnProvider = cdnService.getProvider('s3CDN')
+
+const fileSystemService = await app.getService(FileSystemService)
+const fsProvider = fileSystemService.getFileSystemProvider('s3Files')
+```
+
 ## Configuration
 
 ### S3FileSystemProviderOptions
@@ -423,19 +502,27 @@ interface S3CDNProviderOptions {
 }
 ```
 
-### Peer Dependencies
+## Integration
 
-- `@tokenring-ai/cdn: 0.2.0`
-- `@tokenring-ai/filesystem: 0.2.0`
+### With CDN Service
 
-### Dependencies
+The package integrates with `@tokenring-ai/cdn` by providing an implementation of the `CDNProvider` interface. When configured via the plugin, S3CDNProvider instances are automatically registered with the CDNService.
 
-- `@aws-sdk/client-s3: ^3.992.0`
-- `@tokenring-ai/agent: 0.2.0`
-- `@tokenring-ai/app: 0.2.0`
-- `zod: ^4.3.6`
+### With File System Service
 
-## Security Considerations
+The package integrates with `@tokenring-ai/filesystem` by implementing the `FileSystemProvider` interface. When configured via the plugin, S3FileSystemProvider instances are automatically registered with the FileSystemService.
+
+### Plugin Installation
+
+1. Install the package: `bun install @tokenring-ai/s3`
+2. Import the plugin: `import s3Plugin from '@tokenring-ai/s3'`
+3. Configure S3 providers in your app configuration
+4. Register the plugin: `app.registerPlugin(s3Plugin)`
+5. Start the app: `await app.start()`
+
+## Best Practices
+
+### Security
 
 - Use IAM roles with least-privilege access when possible
 - Store credentials securely (environment variables or AWS Secrets Manager)
@@ -444,13 +531,73 @@ interface S3CDNProviderOptions {
 - Enable S3 server-side encryption for sensitive data
 - Never expose credentials in client-side code
 
-## Limitations
+### Performance
 
-- **Filesystem**: No real-time file watching, shell execution, or advanced filesystem features
-- **CDN**: No automatic URL signing or CDN-specific caching controls
-- **Performance**: S3 operations have network latency; consider batch operations for large files
-- **Directories**: S3 directories are simulated using prefixes; true directory operations are limited
-- **Consistency**: S3 offers eventual consistency for some operations
+- Consider batch operations for large file transfers
+- Use appropriate content types for better CDN caching
+- Implement retry logic for transient network errors
+- Use S3 Transfer Acceleration for geographically distributed access
+
+### Error Handling
+
+- Always wrap S3 operations in try-catch blocks
+- Handle specific S3 error codes (NoSuchKey, AccessDenied, etc.)
+- Implement exponential backoff for rate limiting
+- Log errors for debugging and monitoring
+
+## Testing and Development
+
+### Testing Setup
+
+This package uses `vitest` for unit testing.
+
+```bash
+# Run tests
+bun test
+
+# Run tests in watch mode
+bun test:watch
+
+# Run tests with coverage
+bun test:coverage
+
+# Type check
+bun build
+```
+
+### Development
+
+1. Clone the repository
+2. Install dependencies: `bun install`
+3. Make changes to the source files
+4. Run tests: `bun test`
+5. Type check: `bun build`
+
+## Dependencies
+
+### Peer Dependencies
+
+- `@tokenring-ai/cdn: 0.2.0`
+- `@tokenring-ai/filesystem: 0.2.0`
+
+### Dependencies
+
+- `@aws-sdk/client-s3: ^3.1000.0`
+- `@tokenring-ai/agent: 0.2.0`
+- `@tokenring-ai/app: 0.2.0`
+- `zod: ^4.3.6`
+
+### Dev Dependencies
+
+- `typescript: ^5.9.3`
+- `vitest: ^4.0.18`
+
+## Related Components
+
+- `@tokenring-ai/cdn` - Core CDN service and provider interface
+- `@tokenring-ai/filesystem` - Core filesystem service and provider interface
+- `@tokenring-ai/app` - Base application framework with plugin system
+- `@tokenring-ai/agent` - Agent orchestration system
 
 ## License
 
