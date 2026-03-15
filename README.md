@@ -30,15 +30,28 @@ pkg/s3/
 ├── plugin.ts                   # Plugin integration logic
 ├── S3CDNProvider.ts            # CDN provider implementation
 ├── S3FileSystemProvider.ts     # File system provider implementation
-├── package.json               # Package configuration and dependencies
-└── vitest.config.ts           # Testing configuration
+├── package.json                # Package configuration and dependencies
+└── vitest.config.ts            # Testing configuration
 ```
 
 ## Core Components
 
 ### S3FileSystemProvider
 
-A filesystem provider that maps S3 buckets to a virtual filesystem interface.
+A filesystem provider that maps S3 buckets to a virtual filesystem interface. Implements the `FileSystemProvider` interface from `@tokenring-ai/filesystem`.
+
+#### Type Exports
+
+```typescript
+// Type definitions
+type S3FileSystemProviderOptions = {
+  bucketName: string;
+  clientConfig?: Record<string, unknown>;
+};
+
+// Zod schema for validation
+const S3FileSystemProviderOptionsSchema: z.ZodType<S3FileSystemProviderOptions>;
+```
 
 #### Constructor
 
@@ -48,7 +61,10 @@ new S3FileSystemProvider(options: S3FileSystemProviderOptions)
 
 **Options:**
 - `bucketName`: Name of the S3 bucket (required)
-- `clientConfig`: AWS SDK client configuration object (optional)
+- `clientConfig`: AWS SDK client configuration object (optional, defaults to `{}`)
+
+**Throws:**
+- `Error` if `bucketName` is not provided
 
 #### Path Conversion Methods
 
@@ -69,15 +85,19 @@ const relativePath = provider.relativeOrAbsolutePathToRelativePath('s3://bucket-
 ```typescript
 // Write content to a file
 await provider.writeFile('path/to/file.txt', 'content or buffer')
+// Returns: true
 
 // Read file content
 const content = await provider.readFile('path/to/file.txt', 'utf8')
+// Returns: string or Buffer (if encoding is 'buffer')
 
 // Append to a file (creates file if it doesn't exist)
 await provider.appendFile('path/to/file.txt', 'additional content')
+// Returns: true
 
 // Delete a file
 await provider.deleteFile('path/to/file.txt')
+// Returns: true
 ```
 
 ##### File Information
@@ -85,10 +105,22 @@ await provider.deleteFile('path/to/file.txt')
 ```typescript
 // Check if file/directory exists
 const exists = await provider.exists('path/to/file.txt')
+// Returns: boolean
 
 // Get file/directory statistics
 const stats = await provider.stat('path/to/file.txt')
-// Returns: { path, absolutePath, isFile, isDirectory, isSymbolicLink, size, modified, created, accessed }
+// Returns: StatLike {
+//   exists: boolean;
+//   path: string;
+//   absolutePath: string;
+//   isFile: boolean;
+//   isDirectory: boolean;
+//   isSymbolicLink: boolean;
+//   size: number;
+//   modified: Date | undefined;
+//   created: Date | undefined;
+//   accessed: Date | undefined;
+// }
 ```
 
 ##### Directory Operations
@@ -96,17 +128,21 @@ const stats = await provider.stat('path/to/file.txt')
 ```typescript
 // Create a directory (S3 uses prefixes, so this is virtual)
 await provider.createDirectory('path/to/directory')
+// Returns: true
 
 // Get directory tree listing (async generator)
 for await (const path of provider.getDirectoryTree('path/to/directory')) {
   console.log(path)
 }
+// Yields: string (full S3 key path)
 
 // Copy files
 await provider.copy('source.txt', 'destination.txt', { overwrite: true })
+// Returns: true
 
 // Rename files (implemented as copy + delete)
 await provider.rename('old-name.txt', 'new-name.txt')
+// Returns: true
 ```
 
 ##### Unsupported Methods
@@ -137,7 +173,23 @@ The following methods are not supported by S3 and will throw errors:
 
 ### S3CDNProvider
 
-A CDN provider for uploading and managing content in S3 buckets. Extends the base `CDNProvider` class.
+A CDN provider for uploading and managing content in S3 buckets. Extends the base `CDNProvider` class from `@tokenring-ai/cdn`.
+
+#### Type Exports
+
+```typescript
+// Type definitions
+type S3CDNProviderOptions = {
+  bucket: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  baseUrl?: string;
+};
+
+// Zod schema for validation
+const S3CDNProviderOptionsSchema: z.ZodType<S3CDNProviderOptions>;
+```
 
 #### Constructor
 
@@ -152,7 +204,13 @@ new S3CDNProvider(options: S3CDNProviderOptions)
 - `secretAccessKey`: AWS secret access key (required)
 - `baseUrl`: Custom base URL for CDN (optional, defaults to `https://{bucket}.s3.amazonaws.com`)
 
-**Note:** All required parameters (`bucket`, `region`, `accessKeyId`, `secretAccessKey`) will throw an error if not provided.
+**Throws:**
+- `Error` if `bucket` is not provided
+- `Error` if `region` is not provided
+- `Error` if `accessKeyId` is not provided
+- `Error` if `secretAccessKey` is not provided
+
+**Note:** While the Zod schema marks `region`, `accessKeyId`, `secretAccessKey`, and `baseUrl` as optional, the constructor validates that all required parameters are provided and throws errors if they are missing.
 
 #### Key Methods
 
@@ -163,11 +221,18 @@ const result = await provider.upload(buffer, {
   contentType: 'image/png',
   metadata: { author: 'User', category: 'images' }
 })
-// Returns: { url, id, metadata }
+// Returns: UploadResult {
+//   url: string;
+//   id: string;
+//   metadata?: Record<string, string>;
+// }
 
 // Delete by URL
 const deleteResult = await provider.delete('https://bucket.s3.amazonaws.com/file.txt')
-// Returns: { success: boolean, message: string }
+// Returns: DeleteResult {
+//   success: boolean;
+//   message: string;
+// }
 
 // Check if resource exists
 const exists = await provider.exists('https://bucket.s3.amazonaws.com/file.txt')
@@ -184,7 +249,7 @@ const exists = await provider.exists('https://bucket.s3.amazonaws.com/file.txt')
 
 ### CDN Service
 
-The package registers `S3CDNProvider` instances with `CDNService`:
+The package registers `S3CDNProvider` instances with `CDNService` from `@tokenring-ai/cdn`.
 
 **Registration:**
 - Automatically registers with CDNService when CDN configuration is provided via plugin
@@ -202,7 +267,7 @@ interface CDNProvider {
 
 ### File System Service
 
-The package registers `S3FileSystemProvider` instances with `FileSystemService`:
+The package registers `S3FileSystemProvider` instances with `FileSystemService` from `@tokenring-ai/filesystem`.
 
 **Registration:**
 - Automatically registers with FileSystemService when filesystem configuration is provided via plugin
@@ -719,7 +784,7 @@ bun build
 
 ### Dependencies
 
-- `@aws-sdk/client-s3: ^3.1000.0`
+- `@aws-sdk/client-s3: ^3.1009.0`
 - `@tokenring-ai/agent: 0.2.0`
 - `@tokenring-ai/app: 0.2.0`
 - `zod: ^4.3.6`
@@ -727,7 +792,7 @@ bun build
 ### Dev Dependencies
 
 - `typescript: ^5.9.3`
-- `vitest: ^4.0.18`
+- `vitest: ^4.1.0`
 
 ## Related Components
 
