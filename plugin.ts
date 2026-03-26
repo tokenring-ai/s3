@@ -3,9 +3,9 @@ import {CDNConfigSchema, CDNService} from "@tokenring-ai/cdn";
 import FileSystemService from "@tokenring-ai/filesystem/FileSystemService";
 import {FileSystemConfigSchema} from "@tokenring-ai/filesystem/schema";
 import {z} from "zod";
-import packageJSON from './package.json' with {type: 'json'};
-import S3CDNProvider, {S3CDNProviderOptionsSchema} from "./S3CDNProvider.js";
-import S3FileSystemProvider, {S3FileSystemProviderOptionsSchema} from "./S3FileSystemProvider.js";
+import packageJSON from "./package.json" with {type: "json"};
+import S3CDNProvider, {S3CDNProviderOptionsSchema} from "./S3CDNProvider.ts";
+import S3FileSystemProvider, {S3FileSystemProviderOptionsSchema} from "./S3FileSystemProvider.ts";
 
 const packageConfigSchema = z.object({
   cdn: CDNConfigSchema.optional(),

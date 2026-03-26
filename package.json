@@ -6,7 +6,7 @@
     "@tokenring-ai/app": "0.2.0",
     "zod": "^4.3.6",
     "@tokenring-ai/agent": "0.2.0",
-    "@aws-sdk/client-s3": "^3.1010.0"
+    "@aws-sdk/client-s3": "^3.1017.0"
   },
   "peerDependencies": {
     "@tokenring-ai/cdn": "0.2.0",
@@ -19,8 +19,8 @@
   "license": "MIT",
   "type": "module",
   "devDependencies": {
-    "vitest": "^4.1.0",
-    "typescript": "^5.9.3"
+    "vitest": "^4.1.1",
+    "typescript": "^6.0.2"
   },
   "scripts": {
     "test": "vitest run",

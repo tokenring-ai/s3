@@ -32,12 +32,10 @@ export default class S3CDNProvider extends CDNProvider {
     if (!region) {
       throw new Error("S3CDNProvider requires region");
     }
-    if (!baseUrl) {
-      baseUrl = `https://${bucket}.s3.amazonaws.com`;
-    }
+    const resolvedBaseUrl = baseUrl || `https://${bucket}.s3.amazonaws.com`;
 
     this.bucket = bucket;
-    this.baseUrl = baseUrl;
+    this.baseUrl = resolvedBaseUrl;
 
     this.s3Client = new S3Client({
       region,

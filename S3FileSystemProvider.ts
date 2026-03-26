@@ -72,7 +72,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
       return await this.writeFile(filePath, newContent);
     } catch (error) {
       // If file doesn't exist, create it with the new content
-      return await this.writeFile(filePath, content);
+        return await this.writeFile(filePath, content);
     }
   }
 
@@ -250,15 +250,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
   }
 
   async createDirectory(fsPath: string, options: { recursive?: boolean } = {}): Promise<boolean> {
-    let s3Key = this._s3Key(fsPath);
-    if (s3Key === "") {
-      return true;
-    }
-    if (!s3Key.endsWith("/")) {
-      s3Key += "/";
-    }
-
-    const existingStat = await this.stat(s3Key);
+    const existingStat = await this.stat(fsPath);
     if (existingStat.exists) {
       if (existingStat.isDirectory) return true;
 

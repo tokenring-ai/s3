@@ -784,15 +784,15 @@ bun build
 
 ### Dependencies
 
-- `@aws-sdk/client-s3: ^3.1009.0`
+- `@aws-sdk/client-s3: ^3.1017.0`
 - `@tokenring-ai/agent: 0.2.0`
 - `@tokenring-ai/app: 0.2.0`
 - `zod: ^4.3.6`
 
 ### Dev Dependencies
 
-- `typescript: ^5.9.3`
-- `vitest: ^4.1.0`
+- `typescript: ^6.0.2`
+- `vitest: ^4.1.1`
 
 ## Related Components
 
