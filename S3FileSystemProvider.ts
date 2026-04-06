@@ -10,7 +10,6 @@ import {
 
 import FileSystemProvider, {
   DirectoryTreeOptions,
-  GlobOptions,
   GrepOptions,
   GrepResult,
   StatLike,
@@ -261,9 +260,6 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     return true;
   }
 
-  async chmod(_path: string, _mode: number): Promise<boolean> {
-    throw new Error("Method chmod is not supported by S3FileSystem.");
-  }
 
   async rename(oldPath: string, newPath: string): Promise<boolean> {
     await this.copy(oldPath, newPath, {overwrite: true});
@@ -275,13 +271,6 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     throw new Error("Method watch is not supported by S3FileSystem.");
   }
 
-  async glob(_pattern: string, _options?: GlobOptions): Promise<string[]> {
-    throw new Error("Method glob is not fully supported by S3FileSystem. Only prefix-based listing is available via getDirectoryTree.");
-  }
-
-  async grep(_searchString: string | string[], _options?: GrepOptions): Promise<GrepResult[]> {
-    throw new Error("Method grep is not supported by S3FileSystem. Consider using S3 Select for specific use cases or downloading files for local search.");
-  }
 
   private _s3Key(fsPath: string): string {
     const normalizedPath = fsPath.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
