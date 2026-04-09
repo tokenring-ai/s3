@@ -5,7 +5,7 @@ import {z} from "zod";
 import packageJSON from "./package.json" with {type: "json"};
 import S3CDNProvider from "./S3CDNProvider.ts";
 import S3FileSystemProvider from "./S3FileSystemProvider.ts";
-import {S3ConfigSchema, type S3Account} from "./schema.ts";
+import {type S3Account, S3ConfigSchema} from "./schema.ts";
 
 const packageConfigSchema = z.object({
   s3: S3ConfigSchema.prefault({accounts: {}}),

@@ -8,13 +8,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 
-import FileSystemProvider, {
-  DirectoryTreeOptions,
-  GrepOptions,
-  GrepResult,
-  StatLike,
-  WatchOptions
-} from "@tokenring-ai/filesystem/FileSystemProvider";
+import FileSystemProvider, {DirectoryTreeOptions, StatLike, WatchOptions} from "@tokenring-ai/filesystem/FileSystemProvider";
 import {z} from "zod";
 
 export const S3FileSystemProviderOptionsSchema = z.object({
