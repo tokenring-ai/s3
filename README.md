@@ -60,10 +60,12 @@ new S3FileSystemProvider(options: S3FileSystemProviderOptions)
 ```
 
 **Options:**
+
 - `bucketName`: Name of the S3 bucket (required)
 - `clientConfig`: AWS SDK client configuration object (optional, defaults to `{}`)
 
 **Throws:**
+
 - `Error` if `bucketName` is not provided
 
 #### Path Conversion Methods
@@ -198,6 +200,7 @@ new S3CDNProvider(options: S3CDNProviderOptions)
 ```
 
 **Options:**
+
 - `bucket`: S3 bucket name (required)
 - `region`: AWS region (required)
 - `accessKeyId`: AWS access key ID (required)
@@ -205,6 +208,7 @@ new S3CDNProvider(options: S3CDNProviderOptions)
 - `baseUrl`: Custom base URL for CDN (optional, defaults to `https://{bucket}.s3.amazonaws.com`)
 
 **Throws:**
+
 - `Error` if `bucket` is not provided
 - `Error` if `region` is not provided
 - `Error` if `accessKeyId` is not provided
@@ -252,11 +256,13 @@ const exists = await provider.exists('https://bucket.s3.amazonaws.com/file.txt')
 The package registers `S3CDNProvider` instances with `CDNService` from `@tokenring-ai/cdn`.
 
 **Registration:**
+
 - Automatically registers with CDNService when CDN configuration is provided via plugin
 - Uses `CDNConfigSchema` for configuration validation
 - Providers are registered with the name specified in the configuration
 
 **Provider Interface:**
+
 ```typescript
 interface CDNProvider {
   upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>;
@@ -270,11 +276,13 @@ interface CDNProvider {
 The package registers `S3FileSystemProvider` instances with `FileSystemService` from `@tokenring-ai/filesystem`.
 
 **Registration:**
+
 - Automatically registers with FileSystemService when filesystem configuration is provided via plugin
 - Uses `FileSystemConfigSchema` for configuration validation
 - Providers are registered with the name specified in the configuration
 
 **Provider Interface:**
+
 ```typescript
 interface FileSystemProvider {
   writeFile(fsPath: string, content: string | Buffer): Promise<boolean>;
@@ -369,6 +377,7 @@ await app.start()
 AWS S3 integration for CDN services, providing content delivery capabilities.
 
 **Configuration Schema:** `S3CDNProviderOptionsSchema`
+
 ```typescript
 const S3CDNProviderOptionsSchema = z.object({
   bucket: z.string(),
@@ -382,6 +391,7 @@ const S3CDNProviderOptionsSchema = z.object({
 **Note:** While the schema marks `region`, `accessKeyId`, `secretAccessKey`, and `baseUrl` as optional, the constructor validates that `bucket`, `region`, `accessKeyId`, and `secretAccessKey` are provided and throws errors if they are missing.
 
 **Provider Interface:**
+
 ```typescript
 interface S3CDNProviderOptions {
   bucket: string;
@@ -393,6 +403,7 @@ interface S3CDNProviderOptions {
 ```
 
 **Key Methods:**
+
 - `upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>` - Upload data to S3
   - `options.filename`: Optional filename (defaults to timestamp-random string)
   - `options.contentType`: Optional MIME type
@@ -406,6 +417,7 @@ interface S3CDNProviderOptions {
 S3-backed file system provider with complete file operations.
 
 **Configuration Schema:** `S3FileSystemProviderOptionsSchema`
+
 ```typescript
 const S3FileSystemProviderOptionsSchema = z.object({
   bucketName: z.string(),
@@ -414,6 +426,7 @@ const S3FileSystemProviderOptionsSchema = z.object({
 ```
 
 **Provider Interface:**
+
 ```typescript
 interface S3FileSystemProviderOptions {
   bucketName: string;
@@ -422,6 +435,7 @@ interface S3FileSystemProviderOptions {
 ```
 
 **Key Methods:**
+
 - `writeFile(fsPath: string, content: string | Buffer): Promise<boolean>` - Write file content
 - `readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<any>` - Read file content
 - `deleteFile(fsPath: string): Promise<boolean>` - Delete a file
@@ -650,6 +664,7 @@ interface S3FileSystemProviderOptions {
 ```
 
 **Example:**
+
 ```typescript
 {
   bucketName: 'my-bucket',
@@ -673,6 +688,7 @@ interface S3CDNProviderOptions {
 ```
 
 **Example:**
+
 ```typescript
 {
   bucket: 'my-cdn-bucket',
@@ -690,6 +706,7 @@ interface S3CDNProviderOptions {
 The package integrates with `@tokenring-ai/cdn` by providing an implementation of the `CDNProvider` interface. When configured via the plugin, S3CDNProvider instances are automatically registered with the CDNService.
 
 **Registration Flow:**
+
 1. Plugin receives configuration with `cdn.providers` section
 2. For each provider with `type: 's3'`, creates `S3CDNProvider` instance
 3. Registers provider with CDNService using the provider name
@@ -699,6 +716,7 @@ The package integrates with `@tokenring-ai/cdn` by providing an implementation o
 The package integrates with `@tokenring-ai/filesystem` by implementing the `FileSystemProvider` interface. When configured via the plugin, S3FileSystemProvider instances are automatically registered with the FileSystemService.
 
 **Registration Flow:**
+
 1. Plugin receives configuration with `filesystem.providers` section
 2. For each provider with `type: 's3'`, creates `S3FileSystemProvider` instance
 3. Registers provider with FileSystemService using the provider name

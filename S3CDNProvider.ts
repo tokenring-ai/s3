@@ -1,6 +1,6 @@
-import {DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client,} from "@aws-sdk/client-s3";
+import {DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client} from "@aws-sdk/client-s3";
 import {CDNProvider} from "@tokenring-ai/cdn";
-import type {DeleteResult, UploadOptions, UploadResult,} from "@tokenring-ai/cdn/types";
+import type {DeleteResult, UploadOptions, UploadResult} from "@tokenring-ai/cdn/types";
 import {z} from "zod";
 
 export const S3CDNProviderOptionsSchema = z.object({
