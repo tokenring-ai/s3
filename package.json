@@ -5,7 +5,6 @@
   "dependencies": {
     "@tokenring-ai/app": "0.2.0",
     "zod": "^4.3.6",
-    "@tokenring-ai/agent": "0.2.0",
     "@aws-sdk/client-s3": "^3.1025.0"
   },
   "peerDependencies": {
