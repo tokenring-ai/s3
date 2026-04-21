@@ -8,23 +8,21 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 
-import type {DirectoryTreeOptions, FileSystemProvider, StatLike} from "@tokenring-ai/filesystem/FileSystemProvider";
-import {z} from "zod";
+import type { DirectoryTreeOptions, FileSystemProvider, StatLike } from "@tokenring-ai/filesystem/FileSystemProvider";
+import { z } from "zod";
 
 export const S3FileSystemProviderOptionsSchema = z.object({
   bucketName: z.string(),
-  clientConfig: z.any().optional(),
+  clientConfig: z.any().exactOptional(),
 });
 
-export type S3FileSystemProviderOptions = z.infer<
-  typeof S3FileSystemProviderOptionsSchema
->;
+export type S3FileSystemProviderOptions = z.infer<typeof S3FileSystemProviderOptionsSchema>;
 
 export default class S3FileSystemProvider implements FileSystemProvider {
   private readonly bucketName: string;
   private s3Client!: S3Client;
 
-  constructor({bucketName, clientConfig}: S3FileSystemProviderOptions) {
+  constructor({ bucketName, clientConfig }: S3FileSystemProviderOptions) {
     if (!bucketName) {
       throw new Error("S3FileSystem requires a 'bucketName'.");
     }
@@ -61,10 +59,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     return true;
   }
 
-  async appendFile(
-    filePath: string,
-    content: string | Buffer,
-  ): Promise<boolean> {
+  async appendFile(filePath: string, content: string | Buffer): Promise<boolean> {
     try {
       const existingContent = await this.readFile(filePath, "utf8");
       const newContent = existingContent + content;
@@ -75,10 +70,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     }
   }
 
-  async readFile(
-    fsPath: string,
-    encoding?: BufferEncoding | "buffer",
-  ): Promise<any> {
+  async readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<any> {
     const s3Key = this._s3Key(fsPath);
     if (!s3Key) throw new Error("Path results in an empty S3 key.");
 
@@ -97,8 +89,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
 
   async deleteFile(fsPath: string): Promise<boolean> {
     const s3Key = this._s3Key(fsPath);
-    if (!s3Key)
-      throw new Error("Path results in an empty S3 key for deletion.");
+    if (!s3Key) throw new Error("Path results in an empty S3 key for deletion.");
 
     const command = new DeleteObjectCommand({
       Bucket: this.bucketName,
@@ -123,11 +114,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
       await this.s3Client.send(command);
       return true;
     } catch (error: any) {
-      if (
-        error.name === "NoSuchKey" ||
-        error.name === "NotFound" ||
-        error.$metadata?.httpStatusCode === 404
-      ) {
+      if (error.name === "NoSuchKey" || error.name === "NotFound" || error.$metadata?.httpStatusCode === 404) {
         return false;
       }
       throw error;
@@ -145,7 +132,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
 
     try {
       if (!s3Key) {
-        throw {name: "NoSuchKey", $metadata: {httpStatusCode: 404}};
+        throw { name: "NoSuchKey", $metadata: { httpStatusCode: 404 } };
       }
       const response: any = await this.s3Client.send(command);
       return {
@@ -161,11 +148,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
         accessed: response.LastModified, // S3 doesn't track access time
       };
     } catch (error: any) {
-      if (
-        error.name === "NoSuchKey" ||
-        error.name === "NotFound" ||
-        error.$metadata?.httpStatusCode === 404
-      ) {
+      if (error.name === "NoSuchKey" || error.name === "NotFound" || error.$metadata?.httpStatusCode === 404) {
         const prefixToCheck = originalS3Key ? originalS3Key + "/" : "";
         const listCommand = new ListObjectsV2Command({
           Bucket: this.bucketName,
@@ -175,8 +158,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
         const listResponse: any = await this.s3Client.send(listCommand);
         if (
           (listResponse.KeyCount && listResponse.KeyCount > 0) ||
-          (listResponse.CommonPrefixes &&
-            listResponse.CommonPrefixes.length > 0) ||
+          (listResponse.CommonPrefixes && listResponse.CommonPrefixes.length > 0) ||
           originalS3Key === ""
         ) {
           return {
@@ -202,17 +184,12 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     }
   }
 
-  async copy(
-    sourceFsPath: string,
-    destinationFsPath: string,
-    options: { overwrite?: boolean } = {},
-  ): Promise<boolean> {
+  async copy(sourceFsPath: string, destinationFsPath: string, options: { overwrite?: boolean | undefined } = {}): Promise<boolean> {
     const sourceKey = this._s3Key(sourceFsPath);
     const destinationKey = this._s3Key(destinationFsPath);
 
     if (!sourceKey) throw new Error("Source path results in an empty S3 key.");
-    if (!destinationKey)
-      throw new Error("Destination path results in an empty S3 key.");
+    if (!destinationKey) throw new Error("Destination path results in an empty S3 key.");
 
     // Check if destination exists and overwrite is false
     if (!options.overwrite && (await this.exists(destinationFsPath))) {
@@ -228,14 +205,10 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     return true;
   }
 
-  async* getDirectoryTree(
-    fsPath: string,
-    params?: DirectoryTreeOptions,
-  ): AsyncGenerator<string> {
-    const {ignoreFilter, recursive = true} = params || {};
+  async *getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
+    const { ignoreFilter, recursive = true } = params || {};
     const s3Prefix = this._s3Key(fsPath);
-    const normalizedPrefix =
-      s3Prefix === "" ? "" : s3Prefix.endsWith("/") ? s3Prefix : s3Prefix + "/";
+    const normalizedPrefix = s3Prefix === "" ? "" : s3Prefix.endsWith("/") ? s3Prefix : s3Prefix + "/";
     let continuationToken: string | undefined;
 
     do {
@@ -252,9 +225,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
             continue;
           }
 
-          const relativePath = item.Key.startsWith(normalizedPrefix)
-            ? item.Key.substring(normalizedPrefix.length)
-            : item.Key;
+          const relativePath = item.Key.startsWith(normalizedPrefix) ? item.Key.substring(normalizedPrefix.length) : item.Key;
 
           if (!recursive && relativePath.includes("/")) {
             continue;
@@ -270,10 +241,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     } while (continuationToken);
   }
 
-  async createDirectory(
-    fsPath: string,
-    _options: { recursive?: boolean } = {},
-  ): Promise<boolean> {
+  async createDirectory(fsPath: string, _options: { recursive?: boolean | undefined } = {}): Promise<boolean> {
     const existingStat = await this.stat(fsPath);
     if (existingStat.exists) {
       if (existingStat.isDirectory) return true;
@@ -286,7 +254,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
   }
 
   async rename(oldPath: string, newPath: string): Promise<boolean> {
-    await this.copy(oldPath, newPath, {overwrite: true});
+    await this.copy(oldPath, newPath, { overwrite: true });
     await this.deleteFile(oldPath);
     return true;
   }
@@ -298,9 +266,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     for (const part of parts) {
       if (part === "..") {
         if (resultParts.length === 0) {
-          throw new Error(
-            `Invalid path: ${fsPath} attempts to traverse above bucket root.`,
-          );
+          throw new Error(`Invalid path: ${fsPath} attempts to traverse above bucket root.`);
         }
         resultParts.pop();
       } else if (part !== "." && part !== "") {

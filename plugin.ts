@@ -1,14 +1,15 @@
-import type {TokenRingPlugin} from "@tokenring-ai/app";
-import {CDNService} from "@tokenring-ai/cdn";
+import type { TokenRingPlugin } from "@tokenring-ai/app";
+import { CDNService } from "@tokenring-ai/cdn";
 import FileSystemService from "@tokenring-ai/filesystem/FileSystemService";
-import {z} from "zod";
-import packageJSON from "./package.json" with {type: "json"};
+import { stripUndefinedKeys } from "@tokenring-ai/utility/object/stripObject";
+import { z } from "zod";
+import packageJSON from "./package.json" with { type: "json" };
 import S3CDNProvider from "./S3CDNProvider.ts";
 import S3FileSystemProvider from "./S3FileSystemProvider.ts";
-import {type S3Account, S3ConfigSchema} from "./schema.ts";
+import { type S3Account, S3ConfigSchema } from "./schema.ts";
 
 const packageConfigSchema = z.object({
-  s3: S3ConfigSchema.prefault({accounts: {}}),
+  s3: S3ConfigSchema.prefault({ accounts: {} }),
 });
 
 function addAccountsFromEnv(accounts: Record<string, Partial<S3Account>>) {
@@ -17,16 +18,18 @@ function addAccountsFromEnv(accounts: Record<string, Partial<S3Account>>) {
     if (!match || !value) continue;
     const n = match[1];
     const name = process.env[`S3_ACCOUNT_NAME${n}`] ?? `S3${n ? ` ${n}` : ""}`;
-    accounts[name] = {
+    accounts[name] = stripUndefinedKeys({
       bucket: value,
       region: process.env[`S3_REGION${n}`],
       accessKeyId: process.env[`S3_ACCESS_KEY_ID${n}`],
       secretAccessKey: process.env[`S3_SECRET_ACCESS_KEY${n}`],
       cdn: process.env[`S3_CDN${n}`]
-        ? {baseUrl: process.env[`S3_CDN_BASE_URL${n}`]}
+        ? stripUndefinedKeys({
+            baseUrl: process.env[`S3_CDN_BASE_URL${n}`],
+          })
         : undefined,
       filesystem: process.env[`S3_FILESYSTEM${n}`] ? {} : undefined,
-    };
+    });
   }
 }
 
@@ -40,24 +43,26 @@ export default {
     if (Object.keys(config.s3.accounts).length === 0) return;
 
     for (const [name, account] of Object.entries(config.s3.accounts)) {
-      const {cdn, filesystem} = account;
+      const { cdn, filesystem } = account;
       if (cdn) {
-        app.waitForService(CDNService, (cdnService) => {
+        app.waitForService(CDNService, cdnService => {
           cdnService.registerProvider(
             name,
-            new S3CDNProvider({
-              bucket: account.bucket,
-              region: account.region,
-              accessKeyId: account.accessKeyId,
-              secretAccessKey: account.secretAccessKey,
-              baseUrl: cdn.baseUrl,
-            }),
+            new S3CDNProvider(
+              stripUndefinedKeys({
+                bucket: account.bucket,
+                region: account.region,
+                accessKeyId: account.accessKeyId,
+                secretAccessKey: account.secretAccessKey,
+                baseUrl: cdn.baseUrl,
+              }),
+            ),
           );
         });
       }
 
       if (filesystem) {
-        app.waitForService(FileSystemService, (fileSystemService) => {
+        app.waitForService(FileSystemService, fileSystemService => {
           fileSystemService.registerFileSystemProvider(
             name,
             new S3FileSystemProvider({
@@ -66,11 +71,11 @@ export default {
                 region: account.region,
                 ...(account.accessKeyId && account.secretAccessKey
                   ? {
-                    credentials: {
-                      accessKeyId: account.accessKeyId,
-                      secretAccessKey: account.secretAccessKey,
-                    },
-                  }
+                      credentials: {
+                        accessKeyId: account.accessKeyId,
+                        secretAccessKey: account.secretAccessKey,
+                      },
+                    }
                   : {}),
               },
             }),

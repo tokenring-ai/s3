@@ -1,20 +1,20 @@
-import {z} from "zod";
+import { z } from "zod";
 
 export const S3AccountCDNSchema = z.object({
-  baseUrl: z.string().optional(),
+  baseUrl: z.string().exactOptional(),
 });
 
 export const S3AccountFilesystemSchema = z.object({
-  clientConfig: z.any().optional(),
+  clientConfig: z.any().exactOptional(),
 });
 
 export const S3AccountSchema = z.object({
   bucket: z.string(),
-  region: z.string().optional(),
-  accessKeyId: z.string().optional(),
-  secretAccessKey: z.string().optional(),
-  cdn: S3AccountCDNSchema.optional(),
-  filesystem: S3AccountFilesystemSchema.optional(),
+  region: z.string().exactOptional(),
+  accessKeyId: z.string().exactOptional(),
+  secretAccessKey: z.string().exactOptional(),
+  cdn: S3AccountCDNSchema.exactOptional(),
+  filesystem: S3AccountFilesystemSchema.exactOptional(),
 });
 
 export const S3ConfigSchema = z.object({

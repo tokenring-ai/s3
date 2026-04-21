@@ -1,14 +1,14 @@
-import {DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client} from "@aws-sdk/client-s3";
-import {CDNProvider} from "@tokenring-ai/cdn";
-import type {DeleteResult, UploadOptions, UploadResult} from "@tokenring-ai/cdn/types";
-import {z} from "zod";
+import { DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { CDNProvider } from "@tokenring-ai/cdn";
+import type { DeleteResult, UploadOptions, UploadResult } from "@tokenring-ai/cdn/types";
+import { z } from "zod";
 
 export const S3CDNProviderOptionsSchema = z.object({
   bucket: z.string(),
-  region: z.string().optional(),
-  accessKeyId: z.string().optional(),
-  secretAccessKey: z.string().optional(),
-  baseUrl: z.string().optional(),
+  region: z.string().exactOptional(),
+  accessKeyId: z.string().exactOptional(),
+  secretAccessKey: z.string().exactOptional(),
+  baseUrl: z.string().exactOptional(),
 });
 
 export type S3CDNProviderOptions = z.infer<typeof S3CDNProviderOptionsSchema>;
@@ -18,13 +18,7 @@ export default class S3CDNProvider extends CDNProvider {
   private readonly baseUrl!: string;
   private readonly bucket!: string;
 
-  constructor({
-                bucket,
-                region,
-                baseUrl,
-                secretAccessKey,
-                accessKeyId,
-              }: S3CDNProviderOptions) {
+  constructor({ bucket, region, baseUrl, secretAccessKey, accessKeyId }: S3CDNProviderOptions) {
     super();
     if (!bucket) {
       throw new Error("S3CDNProvider requires a bucket parameter");
@@ -53,9 +47,7 @@ export default class S3CDNProvider extends CDNProvider {
   }
 
   async upload(data: Buffer, options?: UploadOptions): Promise<UploadResult> {
-    const key =
-      options?.filename ||
-      `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const key = options?.filename || `${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
     const command = new PutObjectCommand({
       Bucket: this.bucket,
