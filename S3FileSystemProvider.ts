@@ -145,7 +145,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
 
     try {
       if (!s3Key) {
-        throw {name: "NoSuchKey", $metadata: {httpStatusCode: 404}} as any;
+        throw {name: "NoSuchKey", $metadata: {httpStatusCode: 404}};
       }
       const response: any = await this.s3Client.send(command);
       return {
