@@ -11,6 +11,8 @@ import {
 import type { DirectoryTreeOptions, FileSystemProvider, StatLike } from "@tokenring-ai/filesystem/FileSystemProvider";
 import { z } from "zod";
 
+type AWSError = { name?: string, $metadata?: { httpStatusCode?: number } };
+
 export const S3FileSystemProviderOptionsSchema = z.object({
   bucketName: z.string(),
   clientConfig: z.any().exactOptional(),
@@ -61,8 +63,14 @@ export default class S3FileSystemProvider implements FileSystemProvider {
 
   async appendFile(filePath: string, content: string | Buffer): Promise<boolean> {
     try {
-      const existingContent = await this.readFile(filePath, "utf8");
-      const newContent = existingContent + content;
+      let newContent: string | Buffer;
+      if (typeof content === "string") {
+        const existingContent = await this.readFile(filePath, "utf8");
+        newContent = `${existingContent ?? ""}${content}`;
+      } else {
+        const existingContent = await this.readFile(filePath, "buffer");
+        newContent = Buffer.concat([existingContent ?? Buffer.alloc(0), content]);
+      }
       return await this.writeFile(filePath, newContent);
     } catch {
       // If file doesn't exist, create it with the new content
@@ -70,7 +78,10 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     }
   }
 
-  async readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<any> {
+  async readFile(fsPath: string): Promise<Buffer | null>;
+  async readFile(fsPath: string, encoding: "buffer"): Promise<Buffer>;
+  async readFile(fsPath: string, encoding: BufferEncoding): Promise<string>;
+  async readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<Buffer | string | null> {
     const s3Key = this._s3Key(fsPath);
     if (!s3Key) throw new Error("Path results in an empty S3 key.");
 
@@ -80,7 +91,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     });
     const response: any = await this.s3Client.send(command);
 
-    if (encoding === "buffer") {
+    if (!encoding || encoding === "buffer") {
       return Buffer.from(await response.Body.transformToByteArray());
     }
 
@@ -113,8 +124,12 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     try {
       await this.s3Client.send(command);
       return true;
-    } catch (error: any) {
-      if (error.name === "NoSuchKey" || error.name === "NotFound" || error.$metadata?.httpStatusCode === 404) {
+    } catch (error) {
+      const awsError = error as AWSError;
+      if (
+        awsError.name === "NoSuchKey" ||
+        awsError.name === "NotFound" ||
+        awsError.$metadata?.httpStatusCode === 404) {
         return false;
       }
       throw error;
@@ -147,8 +162,12 @@ export default class S3FileSystemProvider implements FileSystemProvider {
         created: response.LastModified, // S3 doesn't track creation time separately
         accessed: response.LastModified, // S3 doesn't track access time
       };
-    } catch (error: any) {
-      if (error.name === "NoSuchKey" || error.name === "NotFound" || error.$metadata?.httpStatusCode === 404) {
+    } catch (error) {
+      const awsError = error as AWSError;
+      if (
+        awsError.name === "NoSuchKey" ||
+        awsError.name === "NotFound" ||
+        awsError.$metadata?.httpStatusCode === 404) {
         const prefixToCheck = originalS3Key ? originalS3Key + "/" : "";
         const listCommand = new ListObjectsV2Command({
           Bucket: this.bucketName,
@@ -205,7 +224,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     return true;
   }
 
-  async *getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
+  async* getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
     const { ignoreFilter, recursive = true } = params || {};
     const s3Prefix = this._s3Key(fsPath);
     const normalizedPrefix = s3Prefix === "" ? "" : s3Prefix.endsWith("/") ? s3Prefix : s3Prefix + "/";
