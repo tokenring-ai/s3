@@ -11,7 +11,7 @@ import {
 import type { DirectoryTreeOptions, FileSystemProvider, StatLike } from "@tokenring-ai/filesystem/FileSystemProvider";
 import { z } from "zod";
 
-type AWSError = { name?: string, $metadata?: { httpStatusCode?: number } };
+type AWSError = { name?: string; $metadata?: { httpStatusCode?: number } };
 
 export const S3FileSystemProviderOptionsSchema = z.object({
   bucketName: z.string(),
@@ -126,10 +126,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
       return true;
     } catch (error) {
       const awsError = error as AWSError;
-      if (
-        awsError.name === "NoSuchKey" ||
-        awsError.name === "NotFound" ||
-        awsError.$metadata?.httpStatusCode === 404) {
+      if (awsError.name === "NoSuchKey" || awsError.name === "NotFound" || awsError.$metadata?.httpStatusCode === 404) {
         return false;
       }
       throw error;
@@ -164,10 +161,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
       };
     } catch (error) {
       const awsError = error as AWSError;
-      if (
-        awsError.name === "NoSuchKey" ||
-        awsError.name === "NotFound" ||
-        awsError.$metadata?.httpStatusCode === 404) {
+      if (awsError.name === "NoSuchKey" || awsError.name === "NotFound" || awsError.$metadata?.httpStatusCode === 404) {
         const prefixToCheck = originalS3Key ? originalS3Key + "/" : "";
         const listCommand = new ListObjectsV2Command({
           Bucket: this.bucketName,
@@ -224,7 +218,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     return true;
   }
 
-  async* getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
+  async *getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
     const { ignoreFilter, recursive = true } = params || {};
     const s3Prefix = this._s3Key(fsPath);
     const normalizedPrefix = s3Prefix === "" ? "" : s3Prefix.endsWith("/") ? s3Prefix : s3Prefix + "/";

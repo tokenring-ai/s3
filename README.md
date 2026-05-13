@@ -1,10 +1,14 @@
 # @tokenring-ai/s3
 
-AWS S3 integration package for the Token Ring AI ecosystem, providing both filesystem and CDN functionality through a unified interface. This package integrates seamlessly with Token Ring's filesystem and CDN modules, handling S3-specific details like path normalization, error handling, and directory simulation using S3 prefixes.
+AWS S3 integration package for the Token Ring AI ecosystem, providing both filesystem and CDN functionality through a
+unified interface. This package integrates seamlessly with Token Ring's filesystem and CDN modules, handling S3-specific
+details like path normalization, error handling, and directory simulation using S3 prefixes.
 
 ## Overview
 
-The `@tokenring-ai/s3` package provides comprehensive AWS S3 integration for cloud storage and content delivery in the Token Ring AI system. It implements both CDN (Content Delivery Network) and File System providers for seamless cloud storage and content delivery.
+The `@tokenring-ai/s3` package provides comprehensive AWS S3 integration for cloud storage and content delivery in the
+Token Ring AI system. It implements both CDN (Content Delivery Network) and File System providers for seamless cloud
+storage and content delivery.
 
 ### Key Features
 
@@ -38,7 +42,8 @@ pkg/s3/
 
 ### S3FileSystemProvider
 
-A filesystem provider that maps S3 buckets to a virtual filesystem interface. Implements the `FileSystemProvider` interface from `@tokenring-ai/filesystem`.
+A filesystem provider that maps S3 buckets to a virtual filesystem interface. Implements the `FileSystemProvider`
+interface from `@tokenring-ai/filesystem`.
 
 #### Type Exports
 
@@ -175,7 +180,8 @@ The following methods are not supported by S3 and will throw errors:
 
 ### S3CDNProvider
 
-A CDN provider for uploading and managing content in S3 buckets. Extends the base `CDNProvider` class from `@tokenring-ai/cdn`.
+A CDN provider for uploading and managing content in S3 buckets. Extends the base `CDNProvider` class from
+`@tokenring-ai/cdn`.
 
 #### Type Exports
 
@@ -214,7 +220,8 @@ new S3CDNProvider(options: S3CDNProviderOptions)
 - `Error` if `accessKeyId` is not provided
 - `Error` if `secretAccessKey` is not provided
 
-**Note:** While the Zod schema marks `region`, `accessKeyId`, `secretAccessKey`, and `baseUrl` as optional, the constructor validates that all required parameters are provided and throws errors if they are missing.
+**Note:** While the Zod schema marks `region`, `accessKeyId`, `secretAccessKey`, and `baseUrl` as optional, the
+constructor validates that all required parameters are provided and throws errors if they are missing.
 
 #### Key Methods
 
@@ -266,7 +273,9 @@ The package registers `S3CDNProvider` instances with `CDNService` from `@tokenri
 ```typescript
 interface CDNProvider {
   upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>;
+
   delete(url: string): Promise<DeleteResult>;
+
   exists(url: string): Promise<boolean>;
 }
 ```
@@ -286,23 +295,35 @@ The package registers `S3FileSystemProvider` instances with `FileSystemService` 
 ```typescript
 interface FileSystemProvider {
   writeFile(fsPath: string, content: string | Buffer): Promise<boolean>;
+
   appendFile(filePath: string, content: string | Buffer): Promise<boolean>;
+
   readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<any>;
+
   deleteFile(fsPath: string): Promise<boolean>;
+
   exists(fsPath: string): Promise<boolean>;
+
   stat(fsPath: string): Promise<StatLike>;
+
   createDirectory(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>;
+
   getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>;
+
   copy(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>;
+
   rename(oldPath: string, newPath: string): Promise<boolean>;
+
   relativeOrAbsolutePathToAbsolutePath(p: string): string;
+
   relativeOrAbsolutePathToRelativePath(p: string): string;
 }
 ```
 
 ## Plugin Documentation
 
-This package provides a Token Ring plugin that automatically registers S3 providers with the CDN and filesystem services.
+This package provides a Token Ring plugin that automatically registers S3 providers with the CDN and filesystem
+services.
 
 ### Plugin Name
 
@@ -368,7 +389,8 @@ app.registerPlugin(s3Plugin)
 await app.start()
 ```
 
-**Note:** The plugin uses `waitForService` to ensure services are available before registering providers. Providers are only registered if their respective configuration sections (`cdn` or `filesystem`) are present.
+**Note:** The plugin uses `waitForService` to ensure services are available before registering providers. Providers are
+only registered if their respective configuration sections (`cdn` or `filesystem`) are present.
 
 ## Provider Documentation
 
@@ -388,7 +410,9 @@ const S3CDNProviderOptionsSchema = z.object({
 });
 ```
 
-**Note:** While the schema marks `region`, `accessKeyId`, `secretAccessKey`, and `baseUrl` as optional, the constructor validates that `bucket`, `region`, `accessKeyId`, and `secretAccessKey` are provided and throws errors if they are missing.
+**Note:** While the schema marks `region`, `accessKeyId`, `secretAccessKey`, and `baseUrl` as optional, the constructor
+validates that `bucket`, `region`, `accessKeyId`, and `secretAccessKey` are provided and throws errors if they are
+missing.
 
 **Provider Interface:**
 
@@ -405,11 +429,11 @@ interface S3CDNProviderOptions {
 **Key Methods:**
 
 - `upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>` - Upload data to S3
-  - `options.filename`: Optional filename (defaults to timestamp-random string)
-  - `options.contentType`: Optional MIME type
-  - `options.metadata`: Optional metadata object
+- `options.filename`: Optional filename (defaults to timestamp-random string)
+- `options.contentType`: Optional MIME type
+- `options.metadata`: Optional metadata object
 - `delete(url: string): Promise<DeleteResult>` - Delete an object by URL
-  - Returns `{ success: boolean, message: string }`
+- Returns `{ success: boolean, message: string }`
 - `exists(url: string): Promise<boolean>` - Check if an object exists
 
 ### S3FileSystemProvider
@@ -443,7 +467,8 @@ interface S3FileSystemProviderOptions {
 - `stat(fsPath: string): Promise<StatLike>` - Get file/directory statistics
 - `createDirectory(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>` - Create directory
 - `getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>` - List directory contents
-- `copy(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>` - Copy files
+- `copy(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>` - Copy
+  files
 - `rename(oldPath: string, newPath: string): Promise<boolean>` - Rename files
 - `appendFile(filePath: string, content: string | Buffer): Promise<boolean>` - Append to file
 - `relativeOrAbsolutePathToAbsolutePath(p: string): string` - Convert path to absolute S3 URI
@@ -703,7 +728,8 @@ interface S3CDNProviderOptions {
 
 ### With CDN Service
 
-The package integrates with `@tokenring-ai/cdn` by providing an implementation of the `CDNProvider` interface. When configured via the plugin, S3CDNProvider instances are automatically registered with the CDNService.
+The package integrates with `@tokenring-ai/cdn` by providing an implementation of the `CDNProvider` interface. When
+configured via the plugin, S3CDNProvider instances are automatically registered with the CDNService.
 
 **Registration Flow:**
 
@@ -713,7 +739,8 @@ The package integrates with `@tokenring-ai/cdn` by providing an implementation o
 
 ### With File System Service
 
-The package integrates with `@tokenring-ai/filesystem` by implementing the `FileSystemProvider` interface. When configured via the plugin, S3FileSystemProvider instances are automatically registered with the FileSystemService.
+The package integrates with `@tokenring-ai/filesystem` by implementing the `FileSystemProvider` interface. When
+configured via the plugin, S3FileSystemProvider instances are automatically registered with the FileSystemService.
 
 **Registration Flow:**
 
