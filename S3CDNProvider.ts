@@ -86,7 +86,7 @@ export default class S3CDNProvider extends CDNProvider {
     } catch (error: unknown) {
       return {
         success: false,
-        message: `Failed to delete: ${error instanceof Error ? error.message : String(error)}`,
+        message: `Failed to delete: ${Error.isError(error) ? error.message : String(error)}`,
       };
     }
   }
