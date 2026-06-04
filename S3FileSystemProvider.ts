@@ -1,80 +1,54 @@
-import {
-  CopyObjectCommand,
-  DeleteObjectCommand,
-  GetObjectCommand,
-  HeadObjectCommand,
-  ListObjectsV2Command,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
-
+import { S3Client } from "bun";
 import type { DirectoryTreeOptions, FileSystemProvider, StatLike } from "@tokenring-ai/filesystem/FileSystemProvider";
 import { z } from "zod";
 
-type AWSError = { name?: string; $metadata?: { httpStatusCode?: number } };
-
 export const S3FileSystemProviderOptionsSchema = z.object({
   bucketName: z.string(),
-  clientConfig: z.any().exactOptional(),
+  region: z.string().exactOptional(),
+  endpoint: z.string().exactOptional(),
+  accessKeyId: z.string().exactOptional(),
+  secretAccessKey: z.string().exactOptional(),
 });
 
 export type S3FileSystemProviderOptions = z.infer<typeof S3FileSystemProviderOptionsSchema>;
 
 export default class S3FileSystemProvider implements FileSystemProvider {
   private readonly bucketName: string;
-  private s3Client!: S3Client;
+  private readonly client: S3Client;
 
-  constructor({ bucketName, clientConfig }: S3FileSystemProviderOptions) {
-    if (!bucketName) {
-      throw new Error("S3FileSystem requires a 'bucketName'.");
-    }
+  constructor({ bucketName, region, endpoint, accessKeyId, secretAccessKey }: S3FileSystemProviderOptions) {
+    if (!bucketName) throw new Error("S3FileSystem requires a 'bucketName'.");
     this.bucketName = bucketName;
-
-    this.s3Client = new S3Client(clientConfig || {});
+    this.client = new S3Client({ bucket: bucketName, region, endpoint, accessKeyId, secretAccessKey });
   }
 
   relativeOrAbsolutePathToAbsolutePath(p: string): string {
-    if (p.startsWith("s3://")) {
-      return p;
-    }
-    const s3Key = this._s3Key(p);
-    return `s3://${this.bucketName}/${s3Key}`;
+    if (p.startsWith("s3://")) return p;
+    return `s3://${this.bucketName}/${this._s3Key(p)}`;
   }
 
   relativeOrAbsolutePathToRelativePath(p: string): string {
-    if (p.startsWith(`s3://${this.bucketName}/`)) {
-      return p.replace(`s3://${this.bucketName}/`, "");
-    }
+    if (p.startsWith(`s3://${this.bucketName}/`)) return p.replace(`s3://${this.bucketName}/`, "");
     return this._s3Key(p);
   }
 
   async writeFile(fsPath: string, content: string | Buffer): Promise<boolean> {
-    const s3Key = this._s3Key(fsPath);
-    if (!s3Key) throw new Error("Path results in an empty S3 key.");
-
-    const command = new PutObjectCommand({
-      Bucket: this.bucketName,
-      Key: s3Key,
-      Body: content,
-    });
-    await this.s3Client.send(command);
+    const key = this._s3Key(fsPath);
+    if (!key) throw new Error("Path results in an empty S3 key.");
+    await this.client.write(key, content);
     return true;
   }
 
   async appendFile(filePath: string, content: string | Buffer): Promise<boolean> {
     try {
-      let newContent: string | Buffer;
       if (typeof content === "string") {
-        const existingContent = await this.readFile(filePath, "utf8");
-        newContent = `${existingContent ?? ""}${content}`;
-      } else {
-        const existingContent = await this.readFile(filePath, "buffer");
-        newContent = Buffer.concat([existingContent ?? Buffer.alloc(0), content]);
+        const existing = await this.readFile(filePath, "utf8");
+        return this.writeFile(filePath, `${existing ?? ""}${content}`);
       }
-      return await this.writeFile(filePath, newContent);
+      const existing = await this.readFile(filePath, "buffer");
+      return this.writeFile(filePath, Buffer.concat([existing ?? Buffer.alloc(0), content]));
     } catch {
-      // If file doesn't exist, create it with the new content
-      return await this.writeFile(filePath, content);
+      return this.writeFile(filePath, content);
     }
   }
 
@@ -82,187 +56,112 @@ export default class S3FileSystemProvider implements FileSystemProvider {
   async readFile(fsPath: string, encoding: "buffer"): Promise<Buffer>;
   async readFile(fsPath: string, encoding: BufferEncoding): Promise<string>;
   async readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<Buffer | string | null> {
-    const s3Key = this._s3Key(fsPath);
-    if (!s3Key) throw new Error("Path results in an empty S3 key.");
-
-    const command = new GetObjectCommand({
-      Bucket: this.bucketName,
-      Key: s3Key,
-    });
-    const response: any = await this.s3Client.send(command);
-
-    if (!encoding || encoding === "buffer") {
-      return Buffer.from(await response.Body.transformToByteArray());
-    }
-
-    return response.Body.transformToString(encoding);
+    const key = this._s3Key(fsPath);
+    if (!key) throw new Error("Path results in an empty S3 key.");
+    const file = this.client.file(key);
+    if (!encoding || encoding === "buffer") return Buffer.from(await file.arrayBuffer());
+    return file.text();
   }
 
   async deleteFile(fsPath: string): Promise<boolean> {
-    const s3Key = this._s3Key(fsPath);
-    if (!s3Key) throw new Error("Path results in an empty S3 key for deletion.");
-
-    const command = new DeleteObjectCommand({
-      Bucket: this.bucketName,
-      Key: s3Key,
-    });
-    await this.s3Client.send(command);
+    const key = this._s3Key(fsPath);
+    if (!key) throw new Error("Path results in an empty S3 key for deletion.");
+    await this.client.delete(key);
     return true;
   }
 
   async exists(fsPath: string): Promise<boolean> {
-    const s3Key = this._s3Key(fsPath);
-
-    if (!s3Key) {
-      return false;
-    }
-
-    const command = new HeadObjectCommand({
-      Bucket: this.bucketName,
-      Key: s3Key,
-    });
-    try {
-      await this.s3Client.send(command);
-      return true;
-    } catch (error) {
-      const awsError = error as AWSError;
-      if (awsError.name === "NoSuchKey" || awsError.name === "NotFound" || awsError.$metadata?.httpStatusCode === 404) {
-        return false;
-      }
-      throw error;
-    }
+    const key = this._s3Key(fsPath);
+    if (!key) return false;
+    return this.client.exists(key);
   }
 
   async stat(fsPath: string): Promise<StatLike> {
-    const originalS3Key = this._s3Key(fsPath);
-    const s3Key = originalS3Key || "";
+    const key = this._s3Key(fsPath);
 
-    const command = new HeadObjectCommand({
-      Bucket: this.bucketName,
-      Key: s3Key,
-    });
-
-    try {
-      if (!s3Key) {
-        throw { name: "NoSuchKey", $metadata: { httpStatusCode: 404 } };
+    if (key) {
+      try {
+        const s = await this.client.file(key).stat();
+        return {
+          exists: true,
+          path: fsPath,
+          absolutePath: this.relativeOrAbsolutePathToAbsolutePath(fsPath),
+          isFile: true,
+          isDirectory: false,
+          isSymbolicLink: false,
+          size: s.size,
+          modified: s.lastModified,
+          created: s.lastModified,
+          accessed: s.lastModified,
+        };
+      } catch {
+        // fall through to directory check
       }
-      const response: any = await this.s3Client.send(command);
+    }
+
+    // Directory check via listing
+    const prefix = key ? `${key}/` : "";
+    const list = await this.client.list({ prefix, maxKeys: 1 });
+    if ((list.contents?.length ?? 0) > 0 || !key) {
       return {
         exists: true,
         path: fsPath,
         absolutePath: this.relativeOrAbsolutePathToAbsolutePath(fsPath),
-        isFile: true,
-        isDirectory: false,
+        isFile: false,
+        isDirectory: true,
         isSymbolicLink: false,
-        size: response.ContentLength,
-        modified: response.LastModified,
-        created: response.LastModified, // S3 doesn't track creation time separately
-        accessed: response.LastModified, // S3 doesn't track access time
+        size: 0,
+        modified: undefined,
+        created: undefined,
+        accessed: undefined,
       };
-    } catch (error) {
-      const awsError = error as AWSError;
-      if (awsError.name === "NoSuchKey" || awsError.name === "NotFound" || awsError.$metadata?.httpStatusCode === 404) {
-        const prefixToCheck = originalS3Key ? originalS3Key + "/" : "";
-        const listCommand = new ListObjectsV2Command({
-          Bucket: this.bucketName,
-          Prefix: prefixToCheck,
-          MaxKeys: 1,
-        });
-        const listResponse: any = await this.s3Client.send(listCommand);
-        if (
-          (listResponse.KeyCount && listResponse.KeyCount > 0) ||
-          (listResponse.CommonPrefixes && listResponse.CommonPrefixes.length > 0) ||
-          originalS3Key === ""
-        ) {
-          return {
-            exists: true,
-            path: fsPath,
-            absolutePath: this.relativeOrAbsolutePathToAbsolutePath(fsPath),
-            isFile: false,
-            isDirectory: true,
-            isSymbolicLink: false,
-            size: 0,
-            modified: undefined,
-            created: undefined,
-            accessed: undefined,
-          };
-        }
-
-        return {
-          exists: false,
-          path: fsPath,
-        };
-      }
-      throw error;
     }
+
+    return { exists: false, path: fsPath };
   }
 
-  async copy(sourceFsPath: string, destinationFsPath: string, options: { overwrite?: boolean | undefined } = {}): Promise<boolean> {
+  async copy(sourceFsPath: string, destinationFsPath: string, options: { overwrite?: boolean } = {}): Promise<boolean> {
     const sourceKey = this._s3Key(sourceFsPath);
     const destinationKey = this._s3Key(destinationFsPath);
-
     if (!sourceKey) throw new Error("Source path results in an empty S3 key.");
     if (!destinationKey) throw new Error("Destination path results in an empty S3 key.");
-
-    // Check if destination exists and overwrite is false
     if (!options.overwrite && (await this.exists(destinationFsPath))) {
       throw new Error(`Destination already exists: ${destinationFsPath}`);
     }
-
-    const command = new CopyObjectCommand({
-      Bucket: this.bucketName,
-      CopySource: `${this.bucketName}/${sourceKey}`,
-      Key: destinationKey,
-    });
-    await this.s3Client.send(command);
+    const data = await this.client.file(sourceKey).arrayBuffer();
+    await this.client.write(destinationKey, data);
     return true;
   }
 
   async *getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
     const { ignoreFilter, recursive = true } = params || {};
     const s3Prefix = this._s3Key(fsPath);
-    const normalizedPrefix = s3Prefix === "" ? "" : s3Prefix.endsWith("/") ? s3Prefix : s3Prefix + "/";
-    let continuationToken: string | undefined;
+    const prefix = s3Prefix === "" ? "" : s3Prefix.endsWith("/") ? s3Prefix : `${s3Prefix}/`;
+    let startAfter: string | undefined;
 
     do {
-      const command = new ListObjectsV2Command({
-        Bucket: this.bucketName,
-        Prefix: normalizedPrefix,
-        ContinuationToken: continuationToken,
-      });
-      const response: any = await this.s3Client.send(command);
+      const response = await this.client.list({ prefix, startAfter });
+      const contents = response.contents ?? [];
 
-      if (response.Contents) {
-        for (const item of response.Contents) {
-          if (item.Key === normalizedPrefix && item.Key.endsWith("/")) {
-            continue;
-          }
-
-          const relativePath = item.Key.startsWith(normalizedPrefix) ? item.Key.substring(normalizedPrefix.length) : item.Key;
-
-          if (!recursive && relativePath.includes("/")) {
-            continue;
-          }
-
-          if (!ignoreFilter?.(item.Key)) {
-            yield item.Key;
-          }
-        }
+      for (const item of contents) {
+        if (!item.key) continue;
+        if (item.key === prefix && item.key.endsWith("/")) continue;
+        const relativePath = item.key.startsWith(prefix) ? item.key.slice(prefix.length) : item.key;
+        if (!recursive && relativePath.includes("/")) continue;
+        if (!ignoreFilter?.(item.key)) yield item.key;
       }
 
-      continuationToken = response.NextContinuationToken;
-    } while (continuationToken);
+      if (!response.isTruncated) break;
+      startAfter = contents.at(-1)?.key;
+    } while (startAfter);
   }
 
-  async createDirectory(fsPath: string, _options: { recursive?: boolean | undefined } = {}): Promise<boolean> {
-    const existingStat = await this.stat(fsPath);
-    if (existingStat.exists) {
-      if (existingStat.isDirectory) return true;
-
+  async createDirectory(fsPath: string, _options: { recursive?: boolean } = {}): Promise<boolean> {
+    const existing = await this.stat(fsPath);
+    if (existing.exists) {
+      if (existing.isDirectory) return true;
       throw new Error(`Path already exists and is not a directory: ${fsPath}`);
     }
-
-    // S3 does not have directories, they are created automatically
     return true;
   }
 
@@ -275,17 +174,15 @@ export default class S3FileSystemProvider implements FileSystemProvider {
   private _s3Key(fsPath: string): string {
     const normalizedPath = fsPath.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
     const parts = normalizedPath.split("/");
-    const resultParts: string[] = [];
+    const result: string[] = [];
     for (const part of parts) {
       if (part === "..") {
-        if (resultParts.length === 0) {
-          throw new Error(`Invalid path: ${fsPath} attempts to traverse above bucket root.`);
-        }
-        resultParts.pop();
+        if (result.length === 0) throw new Error(`Invalid path: ${fsPath} attempts to traverse above bucket root.`);
+        result.pop();
       } else if (part !== "." && part !== "") {
-        resultParts.push(part);
+        result.push(part);
       }
     }
-    return resultParts.join("/");
+    return result.join("/");
   }
 }

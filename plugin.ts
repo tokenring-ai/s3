@@ -65,20 +65,14 @@ export default {
         app.waitForService(FileSystemService, fileSystemService => {
           fileSystemService.registerFileSystemProvider(
             name,
-            new S3FileSystemProvider({
-              bucketName: account.bucket,
-              clientConfig: filesystem.clientConfig ?? {
+            new S3FileSystemProvider(
+              stripUndefinedKeys({
+                bucketName: account.bucket,
                 region: account.region,
-                ...(account.accessKeyId && account.secretAccessKey
-                  ? {
-                      credentials: {
-                        accessKeyId: account.accessKeyId,
-                        secretAccessKey: account.secretAccessKey,
-                      },
-                    }
-                  : {}),
-              },
-            }),
+                accessKeyId: account.accessKeyId,
+                secretAccessKey: account.secretAccessKey,
+              }),
+            ),
           );
         });
       }

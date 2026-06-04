@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { S3Client } from "bun";
 import { CDNProvider } from "@tokenring-ai/cdn";
 import type { DeleteResult, UploadOptions, UploadResult } from "@tokenring-ai/cdn/types";
 import { z } from "zod";
@@ -14,105 +14,42 @@ export const S3CDNProviderOptionsSchema = z.object({
 export type S3CDNProviderOptions = z.infer<typeof S3CDNProviderOptionsSchema>;
 
 export default class S3CDNProvider extends CDNProvider {
-  private s3Client!: S3Client;
-  private readonly baseUrl!: string;
-  private readonly bucket!: string;
+  private readonly client: S3Client;
+  private readonly baseUrl: string;
+  private readonly bucket: string;
 
   constructor({ bucket, region, baseUrl, secretAccessKey, accessKeyId }: S3CDNProviderOptions) {
     super();
-    if (!bucket) {
-      throw new Error("S3CDNProvider requires a bucket parameter");
-    }
-    if (!accessKeyId) {
-      throw new Error("S3CDNProvider requires accessKeyId");
-    }
-    if (!secretAccessKey) {
-      throw new Error("S3CDNProvider requires secretAccessKey");
-    }
-    if (!region) {
-      throw new Error("S3CDNProvider requires region");
-    }
-    const resolvedBaseUrl = baseUrl || `https://${bucket}.s3.amazonaws.com`;
-
+    if (!bucket) throw new Error("S3CDNProvider requires a bucket parameter");
+    if (!accessKeyId) throw new Error("S3CDNProvider requires accessKeyId");
+    if (!secretAccessKey) throw new Error("S3CDNProvider requires secretAccessKey");
+    if (!region) throw new Error("S3CDNProvider requires region");
     this.bucket = bucket;
-    this.baseUrl = resolvedBaseUrl;
-
-    this.s3Client = new S3Client({
-      region,
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
-    });
+    this.baseUrl = baseUrl || `https://${bucket}.s3.amazonaws.com`;
+    this.client = new S3Client({ bucket, region, accessKeyId, secretAccessKey });
   }
 
   async upload(data: Buffer, options?: UploadOptions): Promise<UploadResult> {
     const key = options?.filename || `${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-      Body: data,
-      ContentType: options?.contentType,
-      Metadata: options?.metadata,
-    });
-
-    await this.s3Client.send(command);
-
-    const url = `${this.baseUrl}/${key}`;
-
-    return {
-      url,
-      id: key,
-      metadata: options?.metadata,
-    };
+    await this.client.write(key, data, { type: options?.contentType });
+    return { url: `${this.baseUrl}/${key}`, id: key, metadata: options?.metadata };
   }
 
   async delete(url: string): Promise<DeleteResult> {
     try {
-      const key = this.extractKeyFromUrl(url);
-
-      const command = new DeleteObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-      });
-
-      await this.s3Client.send(command);
-
-      return {
-        success: true,
-        message: `Successfully deleted ${key}`,
-      };
+      await this.client.delete(this.extractKeyFromUrl(url));
+      return { success: true, message: `Successfully deleted ${url}` };
     } catch (error: unknown) {
-      return {
-        success: false,
-        message: `Failed to delete: ${Error.isError(error) ? error.message : String(error)}`,
-      };
+      return { success: false, message: `Failed to delete: ${Error.isError(error) ? error.message : String(error)}` };
     }
   }
 
   async exists(url: string): Promise<boolean> {
-    try {
-      const key = this.extractKeyFromUrl(url);
-
-      const command = new HeadObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-      });
-
-      await this.s3Client.send(command);
-      return true;
-    } catch {
-      return false;
-    }
+    return this.client.exists(this.extractKeyFromUrl(url));
   }
 
   private extractKeyFromUrl(url: string): string {
-    if (url.startsWith(this.baseUrl)) {
-      return url.substring(this.baseUrl.length + 1);
-    }
-
-    // Extract from standard S3 URL
+    if (url.startsWith(this.baseUrl)) return url.slice(this.baseUrl.length + 1);
     const match = url.match(/amazonaws\.com\/(.+)$/);
     return match ? match[1] : url;
   }

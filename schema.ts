@@ -4,9 +4,7 @@ export const S3AccountCDNSchema = z.object({
   baseUrl: z.string().exactOptional(),
 });
 
-export const S3AccountFilesystemSchema = z.object({
-  clientConfig: z.any().exactOptional(),
-});
+export const S3AccountFilesystemSchema = z.object({});
 
 export const S3AccountSchema = z.object({
   bucket: z.string(),
