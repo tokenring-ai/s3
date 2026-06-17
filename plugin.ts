@@ -1,7 +1,6 @@
 import type { TokenRingPlugin } from "@tokenring-ai/app";
 import { CDNService } from "@tokenring-ai/cdn";
 import FileSystemService from "@tokenring-ai/filesystem/FileSystemService";
-import { stripUndefinedKeys } from "@tokenring-ai/utility/object/stripObject";
 import { z } from "zod";
 import packageJSON from "./package.json" with { type: "json" };
 import S3CDNProvider from "./S3CDNProvider.ts";
@@ -18,18 +17,25 @@ function addAccountsFromEnv(accounts: Record<string, Partial<S3Account>>) {
     if (!match || !value) continue;
     const n = match[1];
     const name = process.env[`S3_ACCOUNT_NAME${n}`] ?? `S3${n ? ` ${n}` : ""}`;
-    accounts[name] = stripUndefinedKeys({
+    const region = process.env[`S3_REGION${n}`];
+    if (!region) throw new Error(`Missing ENV S3_REGION${n}`);
+    const accessKeyId = process.env[`S3_ACCESS_KEY_ID${n}`];
+    if (!accessKeyId) throw new Error(`Missing ENV S3_ACCESS_KEY_ID${n}`);
+    const secretAccessKey = process.env[`S3_SECRET_ACCESS_KEY${n}`];
+    if (!secretAccessKey) throw new Error(`Missing ENV S3_SECRET_ACCESS_KEY${n}`);
+
+    accounts[name] = {
       bucket: value,
-      region: process.env[`S3_REGION${n}`],
-      accessKeyId: process.env[`S3_ACCESS_KEY_ID${n}`],
-      secretAccessKey: process.env[`S3_SECRET_ACCESS_KEY${n}`],
-      cdn: process.env[`S3_CDN${n}`]
-        ? stripUndefinedKeys({
-            baseUrl: process.env[`S3_CDN_BASE_URL${n}`],
-          })
-        : undefined,
-      filesystem: process.env[`S3_FILESYSTEM${n}`] ? {} : undefined,
-    });
+      region,
+      accessKeyId,
+      secretAccessKey,
+      ...(process.env[`S3_CDN_BASE_URL${n}`] && {
+        cdn: {
+          publicUrl: process.env[`S3_CDN_PUBLIC_URL${n}`]!
+        }
+      }),
+      ...(process.env[`S3_FILESYSTEM${n}`] && {}),
+    };
   }
 }
 
@@ -48,15 +54,14 @@ export default {
         app.waitForService(CDNService, cdnService => {
           cdnService.registerProvider(
             name,
-            new S3CDNProvider(
-              stripUndefinedKeys({
-                bucket: account.bucket,
-                region: account.region,
-                accessKeyId: account.accessKeyId,
-                secretAccessKey: account.secretAccessKey,
-                baseUrl: cdn.baseUrl,
-              }),
-            ),
+            new S3CDNProvider({
+              bucket: account.bucket,
+              region: account.region,
+              accessKeyId: account.accessKeyId,
+              secretAccessKey: account.secretAccessKey,
+              endpoint: account.endpoint,
+              publicUrl: cdn.publicUrl,
+            }),
           );
         });
       }
@@ -65,13 +70,13 @@ export default {
         app.waitForService(FileSystemService, fileSystemService => {
           fileSystemService.registerFileSystemProvider(
             name,
-            new S3FileSystemProvider(
-              stripUndefinedKeys({
-                bucketName: account.bucket,
+            new S3FileSystemProvider({
+                bucket: account.bucket,
                 region: account.region,
                 accessKeyId: account.accessKeyId,
                 secretAccessKey: account.secretAccessKey,
-              }),
+                endpoint: account.endpoint,
+              }
             ),
           );
         });

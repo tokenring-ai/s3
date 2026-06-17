@@ -1,35 +1,37 @@
-import { S3Client } from "bun";
 import type { DirectoryTreeOptions, FileSystemProvider, StatLike } from "@tokenring-ai/filesystem/FileSystemProvider";
+import { S3Client } from "bun";
 import { z } from "zod";
 
 export const S3FileSystemProviderOptionsSchema = z.object({
-  bucketName: z.string(),
-  region: z.string().exactOptional(),
-  endpoint: z.string().exactOptional(),
-  accessKeyId: z.string().exactOptional(),
-  secretAccessKey: z.string().exactOptional(),
+  bucket: z.string(),
+  endpoint: z.string(),
+  region: z.string(),
+  accessKeyId: z.string(),
+  secretAccessKey: z.string(),
 });
 
 export type S3FileSystemProviderOptions = z.infer<typeof S3FileSystemProviderOptionsSchema>;
+export type ParsedS3FileSystemProviderOptions = z.output<typeof S3FileSystemProviderOptionsSchema>;
 
 export default class S3FileSystemProvider implements FileSystemProvider {
   private readonly bucketName: string;
   private readonly client: S3Client;
 
-  constructor({ bucketName, region, endpoint, accessKeyId, secretAccessKey }: S3FileSystemProviderOptions) {
-    if (!bucketName) throw new Error("S3FileSystem requires a 'bucketName'.");
-    this.bucketName = bucketName;
-    this.client = new S3Client({ bucket: bucketName, region, endpoint, accessKeyId, secretAccessKey });
+  constructor({ bucket, region, endpoint, accessKeyId, secretAccessKey }: ParsedS3FileSystemProviderOptions) {
+    if (!bucket) throw new Error("S3FileSystem requires a 'bucketName'.");
+    this.bucketName = bucket;
+    this.client = new S3Client({
+      bucket: bucket,
+      region,
+      endpoint,
+      accessKeyId,
+      secretAccessKey
+    });
   }
 
   relativeOrAbsolutePathToAbsolutePath(p: string): string {
     if (p.startsWith("s3://")) return p;
     return `s3://${this.bucketName}/${this._s3Key(p)}`;
-  }
-
-  relativeOrAbsolutePathToRelativePath(p: string): string {
-    if (p.startsWith(`s3://${this.bucketName}/`)) return p.replace(`s3://${this.bucketName}/`, "");
-    return this._s3Key(p);
   }
 
   async writeFile(fsPath: string, content: string | Buffer): Promise<boolean> {
@@ -111,9 +113,6 @@ export default class S3FileSystemProvider implements FileSystemProvider {
         isDirectory: true,
         isSymbolicLink: false,
         size: 0,
-        modified: undefined,
-        created: undefined,
-        accessed: undefined,
       };
     }
 
@@ -133,14 +132,17 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     return true;
   }
 
-  async *getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
+  async* getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
     const { ignoreFilter, recursive = true } = params || {};
     const s3Prefix = this._s3Key(fsPath);
     const prefix = s3Prefix === "" ? "" : s3Prefix.endsWith("/") ? s3Prefix : `${s3Prefix}/`;
     let startAfter: string | undefined;
 
     do {
-      const response = await this.client.list({ prefix, startAfter });
+      const response = await this.client.list({
+        prefix,
+        ...(startAfter && { startAfter })
+      });
       const contents = response.contents ?? [];
 
       for (const item of contents) {
