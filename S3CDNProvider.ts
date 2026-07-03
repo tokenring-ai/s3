@@ -32,7 +32,7 @@ export default class S3CDNProvider extends CDNProvider {
   async upload(data: Buffer, options?: UploadOptions): Promise<UploadResult> {
     const key = options?.filename || `${Date.now()}-${Math.random().toString(36).substring(7)}`;
     await this.client.write(key, data, {
-      ...(options?.contentType && { type: options.contentType })
+      ...(options?.contentType && { type: options.contentType }),
     });
     return { url: `${this.opts.publicUrl}/${key}`, id: key, metadata: options?.metadata };
   }
@@ -53,6 +53,6 @@ export default class S3CDNProvider extends CDNProvider {
   private extractKeyFromUrl(url: string): string {
     if (url.startsWith(this.opts.publicUrl)) return url.slice(this.opts.publicUrl.length + 1);
     const match = url.match(/amazonaws\.com\/(.+)$/);
-    return match ? match[1] : url;
+    return match ? match[1]! : url;
   }
 }

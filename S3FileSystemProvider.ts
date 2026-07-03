@@ -25,7 +25,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
       region,
       endpoint,
       accessKeyId,
-      secretAccessKey
+      secretAccessKey,
     });
   }
 
@@ -45,10 +45,10 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     try {
       if (typeof content === "string") {
         const existing = await this.readFile(filePath, "utf8");
-        return this.writeFile(filePath, `${existing ?? ""}${content}`);
+        return this.writeFile(filePath, `${existing}${content}`);
       }
       const existing = await this.readFile(filePath, "buffer");
-      return this.writeFile(filePath, Buffer.concat([existing ?? Buffer.alloc(0), content]));
+      return this.writeFile(filePath, Buffer.concat([existing, content]));
     } catch {
       return this.writeFile(filePath, content);
     }
@@ -132,7 +132,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     return true;
   }
 
-  async* getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
+  async *getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string> {
     const { ignoreFilter, recursive = true } = params || {};
     const s3Prefix = this._s3Key(fsPath);
     const prefix = s3Prefix === "" ? "" : s3Prefix.endsWith("/") ? s3Prefix : `${s3Prefix}/`;
@@ -141,7 +141,7 @@ export default class S3FileSystemProvider implements FileSystemProvider {
     do {
       const response = await this.client.list({
         prefix,
-        ...(startAfter && { startAfter })
+        ...(startAfter && { startAfter }),
       });
       const contents = response.contents ?? [];
 

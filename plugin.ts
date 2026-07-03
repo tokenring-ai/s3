@@ -13,7 +13,7 @@ const packageConfigSchema = z.object({
 
 function addAccountsFromEnv(accounts: Record<string, Partial<S3Account>>) {
   for (const [key, value] of Object.entries(process.env)) {
-    const match = key.match(/^S3_BUCKET(\d*)$/);
+    const match = key.match(/^S3_BUCKET(\d*)$/) as [string, string] | undefined;
     if (!match || !value) continue;
     const n = match[1];
     const name = process.env[`S3_ACCOUNT_NAME${n}`] ?? `S3${n ? ` ${n}` : ""}`;
@@ -31,8 +31,8 @@ function addAccountsFromEnv(accounts: Record<string, Partial<S3Account>>) {
       secretAccessKey,
       ...(process.env[`S3_CDN_BASE_URL${n}`] && {
         cdn: {
-          publicUrl: process.env[`S3_CDN_PUBLIC_URL${n}`]!
-        }
+          publicUrl: process.env[`S3_CDN_PUBLIC_URL${n}`]!,
+        },
       }),
       ...(process.env[`S3_FILESYSTEM${n}`] && {}),
     };
@@ -71,13 +71,12 @@ export default {
           fileSystemService.registerFileSystemProvider(
             name,
             new S3FileSystemProvider({
-                bucket: account.bucket,
-                region: account.region,
-                accessKeyId: account.accessKeyId,
-                secretAccessKey: account.secretAccessKey,
-                endpoint: account.endpoint,
-              }
-            ),
+              bucket: account.bucket,
+              region: account.region,
+              accessKeyId: account.accessKeyId,
+              secretAccessKey: account.secretAccessKey,
+              endpoint: account.endpoint,
+            }),
           );
         });
       }
