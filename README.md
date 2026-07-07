@@ -1,24 +1,32 @@
 # @tokenring-ai/s3
 
-AWS S3 integration package for the Token Ring AI ecosystem, providing both filesystem and CDN functionality through a
-unified interface. This package integrates seamlessly with Token Ring's filesystem and CDN modules, handling S3-specific
-details like path normalization, error handling, and directory simulation using S3 prefixes.
+AWS S3 integration package for the Token Ring AI ecosystem, providing both
+filesystem and CDN functionality through a unified interface. This package
+integrates seamlessly with Token Ring's filesystem and CDN modules, handling
+S3-specific details like path normalization, error handling, and directory
+simulation using S3 prefixes.
 
 ## Overview
 
-The `@tokenring-ai/s3` package provides comprehensive AWS S3 integration for cloud storage and content delivery in the
-Token Ring AI system. It implements both CDN (Content Delivery Network) and File System providers for seamless cloud
-storage and content delivery.
+The `@tokenring-ai/s3` package provides comprehensive AWS S3 integration for
+cloud storage and content delivery in the Token Ring AI system. It implements
+both CDN (Content Delivery Network) and File System providers for seamless
+cloud storage and content delivery.
 
 ### Key Features
 
-- **Filesystem Provider**: Treats S3 buckets as a virtual filesystem with read, write, delete, and directory operations
-- **CDN Provider**: Upload, manage, and serve content from S3 buckets with CDN capabilities
+- **Filesystem Provider**: Treats S3 buckets as a virtual filesystem with
+  read, write, delete, and directory operations
+- **CDN Provider**: Upload, manage, and serve content from S3 buckets with CDN
+  capabilities
 - **Type-Safe APIs**: Strongly-typed interfaces with Zod validation
-- **Automatic Configuration**: Integrates with Token Ring's configuration system via plugin
-- **Path Conversion**: Built-in methods for converting between relative/absolute S3 paths and bucket-relative keys
+- **Automatic Configuration**: Integrates with Token Ring's configuration
+  system via plugin
+- **Path Conversion**: Built-in methods for converting between relative/absolute
+  S3 paths and bucket-relative keys
 - **Error Handling**: Comprehensive validation and error management
-- **Multi-Provider Support**: Works with both standard and custom S3 implementations
+- **Multi-Provider Support**: Works with both standard and custom S3
+  implementations via endpoint configuration
 
 ## Installation
 
@@ -28,64 +36,83 @@ bun install @tokenring-ai/s3
 
 ## Package Structure
 
-```
+```text
 pkg/s3/
 ├── index.ts                    # Main entry point and exports
 ├── plugin.ts                   # Plugin integration logic
+├── schema.ts                   # Zod schema definitions
 ├── S3CDNProvider.ts            # CDN provider implementation
 ├── S3FileSystemProvider.ts     # File system provider implementation
 ├── package.json                # Package configuration and dependencies
-└── vitest.config.ts            # Testing configuration
+└── LICENSE                     # MIT License
 ```
+
+## Chat Commands
+
+This package does not register any chat commands.
+
+## Tools
+
+This package does not define any tools.
 
 ## Core Components
 
 ### S3FileSystemProvider
 
-A filesystem provider that maps S3 buckets to a virtual filesystem interface. Implements the `FileSystemProvider`
-interface from `@tokenring-ai/filesystem`.
+A filesystem provider that maps S3 buckets to a virtual filesystem interface.
+Implements the `FileSystemProvider` interface from `@tokenring-ai/filesystem`.
 
-#### Type Exports
+#### S3FileSystemProvider Type Exports
+
+**File:** `pkg/s3/S3FileSystemProvider.ts`
 
 ```typescript
-// Type definitions
+// Type definitions (inferred from Zod schema)
 type S3FileSystemProviderOptions = {
-  bucketName: string;
-  clientConfig?: Record<string, unknown>;
+  bucket: string;
+  endpoint: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
 };
 
 // Zod schema for validation
 const S3FileSystemProviderOptionsSchema: z.ZodType<S3FileSystemProviderOptions>;
+
+// Exported from package:
+// - S3FileSystemProviderOptions (z.infer - input type)
+// - S3FileSystemProviderOptionsSchema (validation schema)
+// - ParsedS3FileSystemProviderOptions (z.output - parsed/validated type)
+// - S3FileSystemProvider (class)
 ```
 
-#### Constructor
+#### S3FileSystemProvider Constructor
 
 ```typescript
-new S3FileSystemProvider(options: S3FileSystemProviderOptions)
+new S3FileSystemProvider(options: ParsedS3FileSystemProviderOptions)
 ```
 
 **Options:**
 
-- `bucketName`: Name of the S3 bucket (required)
-- `clientConfig`: AWS SDK client configuration object (optional, defaults to `{}`)
+- `bucket`: Name of the S3 bucket (required)
+- `endpoint`: S3 endpoint URL (required)
+- `region`: AWS region (required)
+- `accessKeyId`: AWS access key ID (required)
+- `secretAccessKey`: AWS secret access key (required)
 
 **Throws:**
 
-- `Error` if `bucketName` is not provided
+- `Error` if `bucket` is not provided with message "S3FileSystem requires a 'bucketName'"
 
-#### Path Conversion Methods
+#### S3FileSystemProvider Path Conversion Methods
 
 ```typescript
 // Convert a path to absolute S3 URI format
 const absolutePath = provider.relativeOrAbsolutePathToAbsolutePath('path/to/file.txt')
 // Returns: 's3://bucket-name/path/to/file.txt'
-
-// Convert a path to bucket-relative format (without s3:// prefix)
-const relativePath = provider.relativeOrAbsolutePathToRelativePath('s3://bucket-name/path/to/file.txt')
-// Returns: 'path/to/file.txt'
 ```
 
-#### Key Methods
+#### S3FileSystemProvider Key Methods
 
 ##### File Operations
 
@@ -94,9 +121,9 @@ const relativePath = provider.relativeOrAbsolutePathToRelativePath('s3://bucket-
 await provider.writeFile('path/to/file.txt', 'content or buffer')
 // Returns: true
 
-// Read file content
+// Read file content (overloaded)
 const content = await provider.readFile('path/to/file.txt', 'utf8')
-// Returns: string or Buffer (if encoding is 'buffer')
+// Returns: string (with encoding) or Buffer (with 'buffer' or no encoding)
 
 // Append to a file (creates file if it doesn't exist)
 await provider.appendFile('path/to/file.txt', 'additional content')
@@ -152,78 +179,70 @@ await provider.rename('old-name.txt', 'new-name.txt')
 // Returns: true
 ```
 
-##### Unsupported Methods
-
-The following methods are not supported by S3 and will throw errors:
-
-- `chmod()`: S3 does not support Unix-style file permissions
-- `watch()`: S3 does not support file system watching
-- `glob()`: S3 only supports prefix-based listing via `getDirectoryTree()`
-- `grep()`: S3 does not support content search; use S3 Select or download files for local search
-
 #### Path Handling
 
-- Supports both relative paths (`file.txt`) and absolute S3 paths (`s3://bucket/file.txt`)
-- Automatically normalizes paths and prevents directory traversal above bucket root
-- Simulates directories using S3 prefixes (objects ending with `/`)
+- Supports relative paths (`file.txt`) and absolute S3 paths
+  (`s3://bucket/file.txt`)
+- Automatically normalizes paths and prevents directory traversal above bucket
+  root
+- Simulates directories using S3 prefixes
 - Handles both forward slashes and backslashes for cross-platform compatibility
 - Path traversal with `..` is validated to prevent escaping bucket root
 
 #### Limitations
 
-- S3 is object storage, not a true filesystem, so some filesystem features are limited
-- No support for file permissions (`chmod`)
-- No support for file system watching (`watch`)
-- No support for glob patterns (use prefix-based listing instead)
-- No support for content search (use S3 Select or download files)
+- S3 is object storage, not a true filesystem, so some filesystem features are
+  limited
 - Directories are virtual (created as prefixes)
+- `createDirectory()` only validates that the path does not already exist as a
+  file; it does not create an actual directory object
 
 ### S3CDNProvider
 
-A CDN provider for uploading and managing content in S3 buckets. Extends the base `CDNProvider` class from
-`@tokenring-ai/cdn`.
+A CDN provider for uploading and managing content in S3 buckets. Extends the
+base `CDNProvider` class from `@tokenring-ai/cdn`.
 
-#### Type Exports
+#### S3CDNProvider Type Exports
+
+**File:** `pkg/s3/S3CDNProvider.ts`
 
 ```typescript
-// Type definitions
+// Type definitions (inferred from Zod schema)
 type S3CDNProviderOptions = {
   bucket: string;
+  endpoint: string;
   region: string;
   accessKeyId: string;
   secretAccessKey: string;
-  baseUrl?: string;
+  publicUrl: string;
 };
 
 // Zod schema for validation
 const S3CDNProviderOptionsSchema: z.ZodType<S3CDNProviderOptions>;
+
+// Exported from package:
+// - S3CDNProviderOptions (z.input - input type)
+// - S3CDNProviderOptionsSchema (validation schema)
+// - ParsedS3CDNProviderOptions (z.output - parsed/validated type)
+// - S3CDNProvider (class)
 ```
 
-#### Constructor
+#### S3CDNProvider Constructor
 
 ```typescript
-new S3CDNProvider(options: S3CDNProviderOptions)
+new S3CDNProvider(options: ParsedS3CDNProviderOptions)
 ```
 
 **Options:**
 
 - `bucket`: S3 bucket name (required)
+- `endpoint`: S3 endpoint URL (required)
 - `region`: AWS region (required)
 - `accessKeyId`: AWS access key ID (required)
 - `secretAccessKey`: AWS secret access key (required)
-- `baseUrl`: Custom base URL for CDN (optional, defaults to `https://{bucket}.s3.amazonaws.com`)
+- `publicUrl`: Public URL base for CDN content (required)
 
-**Throws:**
-
-- `Error` if `bucket` is not provided
-- `Error` if `region` is not provided
-- `Error` if `accessKeyId` is not provided
-- `Error` if `secretAccessKey` is not provided
-
-**Note:** While the Zod schema marks `region`, `accessKeyId`, `secretAccessKey`, and `baseUrl` as optional, the
-constructor validates that all required parameters are provided and throws errors if they are missing.
-
-#### Key Methods
+#### S3CDNProvider Key Methods
 
 ```typescript
 // Upload data with options
@@ -239,33 +258,35 @@ const result = await provider.upload(buffer, {
 // }
 
 // Delete by URL
-const deleteResult = await provider.delete('https://bucket.s3.amazonaws.com/file.txt')
+const deleteResult = await provider.delete('https://cdn.example.com/file.txt')
 // Returns: DeleteResult {
 //   success: boolean;
 //   message: string;
 // }
 
 // Check if resource exists
-const exists = await provider.exists('https://bucket.s3.amazonaws.com/file.txt')
+const exists = await provider.exists('https://cdn.example.com/file.txt')
 // Returns: boolean
 ```
 
 #### URL Handling
 
 - Automatically extracts S3 keys from various URL formats
-- Supports custom `baseUrl` for CDN domains
-- Falls back to standard S3 URL format if no custom base is provided
+- Supports custom `publicUrl` for CDN domains
+- Falls back to AWS S3 URL format parsing if URL does not match `publicUrl`
 
 ## Services
 
 ### CDN Service
 
-The package registers `S3CDNProvider` instances with `CDNService` from `@tokenring-ai/cdn`.
+The package registers `S3CDNProvider` instances with `CDNService` from
+`@tokenring-ai/cdn`.
 
 **Registration:**
 
-- Automatically registers with CDNService when CDN configuration is provided via plugin
-- Uses `CDNConfigSchema` for configuration validation
+- Automatically registers with CDNService when CDN configuration is provided
+  via plugin
+- Uses `S3ConfigSchema` for configuration validation
 - Providers are registered with the name specified in the configuration
 
 **Provider Interface:**
@@ -273,21 +294,21 @@ The package registers `S3CDNProvider` instances with `CDNService` from `@tokenri
 ```typescript
 interface CDNProvider {
   upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>;
-
   delete(url: string): Promise<DeleteResult>;
-
   exists(url: string): Promise<boolean>;
 }
 ```
 
 ### File System Service
 
-The package registers `S3FileSystemProvider` instances with `FileSystemService` from `@tokenring-ai/filesystem`.
+The package registers `S3FileSystemProvider` instances with `FileSystemService`
+from `@tokenring-ai/filesystem`.
 
 **Registration:**
 
-- Automatically registers with FileSystemService when filesystem configuration is provided via plugin
-- Uses `FileSystemConfigSchema` for configuration validation
+- Automatically registers with FileSystemService when filesystem configuration
+  is provided via plugin
+- Uses `S3ConfigSchema` for configuration validation
 - Providers are registered with the name specified in the configuration
 
 **Provider Interface:**
@@ -295,35 +316,26 @@ The package registers `S3FileSystemProvider` instances with `FileSystemService` 
 ```typescript
 interface FileSystemProvider {
   writeFile(fsPath: string, content: string | Buffer): Promise<boolean>;
-
   appendFile(filePath: string, content: string | Buffer): Promise<boolean>;
-
   readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<any>;
-
   deleteFile(fsPath: string): Promise<boolean>;
-
   exists(fsPath: string): Promise<boolean>;
-
   stat(fsPath: string): Promise<StatLike>;
-
-  createDirectory(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>;
-
-  getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>;
-
-  copy(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>;
-
+  createDirectory(fsPath: string, options?: { recursive?: boolean }):
+    Promise<boolean>;
+  getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions):
+    AsyncGenerator<string>;
+  copy(sourceFsPath: string, destinationFsPath: string,
+    options?: { overwrite?: boolean }): Promise<boolean>;
   rename(oldPath: string, newPath: string): Promise<boolean>;
-
   relativeOrAbsolutePathToAbsolutePath(p: string): string;
-
-  relativeOrAbsolutePathToRelativePath(p: string): string;
 }
 ```
 
 ## Plugin Documentation
 
-This package provides a Token Ring plugin that automatically registers S3 providers with the CDN and filesystem
-services.
+This package provides a Token Ring plugin that automatically registers S3
+providers with the CDN and filesystem services.
 
 ### Plugin Name
 
@@ -331,54 +343,65 @@ services.
 
 ### Plugin Options Schema
 
+Configuration is organized under `s3.accounts`, where each account can
+optionally expose CDN and/or filesystem providers:
+
 ```typescript
 interface PackageConfig {
-  cdn?: {
-    providers: Record<string, {
-      type: 's3'
-      bucket: string
-      region: string
-      accessKeyId: string
-      secretAccessKey: string
-      baseUrl?: string
-    }>
-  }
-  filesystem?: {
-    providers: Record<string, {
-      type: 's3'
-      bucketName: string
-      clientConfig?: Record<string, unknown>
-    }>
-  }
+  s3: {
+    accounts: Record<string, {
+      bucket: string;
+      region: string;
+      accessKeyId: string;
+      secretAccessKey: string;
+      endpoint: string;
+      cdn?: {
+        publicUrl: string;
+      };
+      filesystem?: {};
+    }>;
+  };
 }
 ```
+
+### Environment Variables
+
+The plugin supports loading S3 accounts from environment variables. The
+following pattern is used (where `N` is an optional numeric suffix, defaulting
+to empty string):
+
+| Variable | Description |
+|---|---|
+| `S3_BUCKET` / `S3_BUCKET1` / `S3_BUCKET2` | Bucket name (required) |
+| `S3_REGION` / `S3_REGION1` / `S3_REGION2` | AWS region (required) |
+| `S3_ACCESS_KEY_ID` / `S3_ACCESS_KEY_ID1` | Access key ID (required) |
+| `S3_SECRET_ACCESS_KEY` / `S3_SECRET_ACCESS_KEY1` | Secret access key (required) |
+| `S3_ACCOUNT_NAME` / `S3_ACCOUNT_NAME1` | Account name (defaults to `S3` or `S3 N`) |
+| `S3_ENDPOINT` / `S3_ENDPOINT1` | S3 endpoint URL (required) |
+| `S3_CDN_BASE_URL` / `S3_CDN_BASE_URL1` | Enables CDN for the account when set |
+| `S3_CDN_PUBLIC_URL` / `S3_CDN_PUBLIC_URL1` | CDN public URL (required if CDN enabled) |
+| `S3_FILESYSTEM` / `S3_FILESYSTEM1` | Enables filesystem for the account when set |
 
 ### Plugin Registration
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app'
-import s3Plugin from '@tokenring-ai/s3'
+import s3Plugin from '@tokenring-ai/s3/plugin'
 
 const app = new TokenRingApp({
   config: {
-    cdn: {
-      providers: {
-        mainCDN: {
-          type: 's3',
-          bucket: 'my-cdn-bucket',
+    s3: {
+      accounts: {
+        main: {
+          bucket: 'my-bucket',
           region: 'us-east-1',
           accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
           secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-          baseUrl: 'https://cdn.example.com'
-        }
-      }
-    },
-    filesystem: {
-      providers: {
-        s3Storage: {
-          type: 's3',
-          bucketName: 'my-files-bucket',
-          clientConfig: { region: 'us-east-1' }
+          endpoint: 'https://s3.amazonaws.com',
+          cdn: {
+            publicUrl: 'https://cdn.example.com'
+          },
+          filesystem: {}
         }
       }
     }
@@ -389,102 +412,72 @@ app.registerPlugin(s3Plugin)
 await app.start()
 ```
 
-**Note:** The plugin uses `waitForService` to ensure services are available before registering providers. Providers are
-only registered if their respective configuration sections (`cdn` or `filesystem`) are present.
+**Note:** The plugin uses `waitForService` to ensure services are available
+before registering providers. Providers are only registered if their respective
+configuration sections (`cdn` or `filesystem`) are present on the account.
 
-## Provider Documentation
+## Schema Documentation
 
-### S3CDNProvider
+### S3ConfigSchema
 
-AWS S3 integration for CDN services, providing content delivery capabilities.
-
-**Configuration Schema:** `S3CDNProviderOptionsSchema`
+Top-level configuration schema for the S3 plugin.
 
 ```typescript
-const S3CDNProviderOptionsSchema = z.object({
+const S3ConfigSchema = z.object({
+  accounts: z.record(z.string(), S3AccountSchema).default({}),
+});
+```
+
+### S3AccountSchema
+
+Defines a single S3 account with optional CDN and filesystem capabilities.
+
+```typescript
+const S3AccountSchema = z.object({
   bucket: z.string(),
-  region: z.string().optional(),
-  accessKeyId: z.string().optional(),
-  secretAccessKey: z.string().optional(),
-  baseUrl: z.string().optional(),
+  region: z.string(),
+  accessKeyId: z.string(),
+  secretAccessKey: z.string(),
+  endpoint: z.string(),
+  cdn: S3AccountCDNSchema.exactOptional(),
+  filesystem: S3AccountFilesystemSchema.exactOptional(),
 });
 ```
 
-**Note:** While the schema marks `region`, `accessKeyId`, `secretAccessKey`, and `baseUrl` as optional, the constructor
-validates that `bucket`, `region`, `accessKeyId`, and `secretAccessKey` are provided and throws errors if they are
-missing.
+**Core identification fields:**
 
-**Provider Interface:**
+- `bucket`: S3 bucket name
+- `region`: AWS region
+- `endpoint`: S3 endpoint URL
 
-```typescript
-interface S3CDNProviderOptions {
-  bucket: string;
-  region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  baseUrl?: string;
-}
-```
+**Credential fields:**
 
-**Key Methods:**
+- `accessKeyId`: AWS access key ID
+- `secretAccessKey`: AWS secret access key
 
-- `upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>` - Upload data to S3
-- `options.filename`: Optional filename (defaults to timestamp-random string)
-- `options.contentType`: Optional MIME type
-- `options.metadata`: Optional metadata object
-- `delete(url: string): Promise<DeleteResult>` - Delete an object by URL
-- Returns `{ success: boolean, message: string }`
-- `exists(url: string): Promise<boolean>` - Check if an object exists
+**Optional capability fields:**
 
-### S3FileSystemProvider
+- `cdn`: CDN configuration (enables CDN provider registration)
+- `filesystem`: Filesystem configuration (enables filesystem provider
+  registration)
 
-S3-backed file system provider with complete file operations.
+### S3AccountCDNSchema
 
-**Configuration Schema:** `S3FileSystemProviderOptionsSchema`
+CDN-specific configuration for an S3 account.
 
 ```typescript
-const S3FileSystemProviderOptionsSchema = z.object({
-  bucketName: z.string(),
-  clientConfig: z.any().optional(),
+const S3AccountCDNSchema = z.object({
+  publicUrl: z.string(),
 });
 ```
 
-**Provider Interface:**
+### S3AccountFilesystemSchema
+
+Filesystem-specific configuration for an S3 account (currently empty schema).
 
 ```typescript
-interface S3FileSystemProviderOptions {
-  bucketName: string;
-  clientConfig?: Record<string, unknown>;
-}
+const S3AccountFilesystemSchema = z.object({});
 ```
-
-**Key Methods:**
-
-- `writeFile(fsPath: string, content: string | Buffer): Promise<boolean>` - Write file content
-- `readFile(fsPath: string, encoding?: BufferEncoding | "buffer"): Promise<any>` - Read file content
-- `deleteFile(fsPath: string): Promise<boolean>` - Delete a file
-- `exists(fsPath: string): Promise<boolean>` - Check if file/directory exists
-- `stat(fsPath: string): Promise<StatLike>` - Get file/directory statistics
-- `createDirectory(fsPath: string, options?: { recursive?: boolean }): Promise<boolean>` - Create directory
-- `getDirectoryTree(fsPath: string, params?: DirectoryTreeOptions): AsyncGenerator<string>` - List directory contents
-- `copy(sourceFsPath: string, destinationFsPath: string, options?: { overwrite?: boolean }): Promise<boolean>` - Copy
-  files
-- `rename(oldPath: string, newPath: string): Promise<boolean>` - Rename files
-- `appendFile(filePath: string, content: string | Buffer): Promise<boolean>` - Append to file
-- `relativeOrAbsolutePathToAbsolutePath(p: string): string` - Convert path to absolute S3 URI
-- `relativeOrAbsolutePathToRelativePath(p: string): string` - Convert path to relative format
-
-## RPC Endpoints
-
-This package does not define any RPC endpoints.
-
-## Chat Commands
-
-This package does not register any chat commands.
-
-## State Management
-
-This package does not manage state directly. It relies on the Token Ring state management system through services.
 
 ## Usage Examples
 
@@ -494,8 +487,11 @@ This package does not manage state directly. It relies on the Token Ring state m
 import { S3FileSystemProvider } from '@tokenring-ai/s3'
 
 const provider = new S3FileSystemProvider({
-  bucketName: 'my-bucket',
-  clientConfig: { region: 'us-east-1' }
+  bucket: 'my-bucket',
+  region: 'us-east-1',
+  endpoint: 'https://s3.amazonaws.com',
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
 })
 
 // Write a file
@@ -534,7 +530,7 @@ await provider.copy('hello.txt', 'docs/hello-copy.txt')
 await provider.rename('hello.txt', 'greeting.txt')
 
 // Append to file
-await provider.appendFile('hello.txt', '\nAppended content')
+await provider.appendFile('greeting.txt', '\nAppended content')
 ```
 
 ### CDN Usage
@@ -545,9 +541,10 @@ import { S3CDNProvider } from '@tokenring-ai/s3'
 const cdn = new S3CDNProvider({
   bucket: 'my-cdn-bucket',
   region: 'us-east-1',
+  endpoint: 'https://s3.amazonaws.com',
   accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  baseUrl: 'https://cdn.example.com'
+  publicUrl: 'https://cdn.example.com'
 })
 
 // Upload an image
@@ -565,8 +562,8 @@ console.log(`Uploaded to: ${uploadResult.url}`)
 console.log(`File ID: ${uploadResult.id}`)
 
 // Check if file exists
-const exists = await cdn.exists(uploadResult.url)
-console.log(`File exists: ${exists}`)
+const fileExists = await cdn.exists(uploadResult.url)
+console.log(`File exists: ${fileExists}`)
 
 // Delete the file
 const deleteResult = await cdn.delete(uploadResult.url)
@@ -578,29 +575,24 @@ console.log(`Message: ${deleteResult.message}`)
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app'
-import s3Plugin from '@tokenring-ai/s3'
+import s3Plugin from '@tokenring-ai/s3/plugin'
 import { CDNService } from '@tokenring-ai/cdn'
 import FileSystemService from '@tokenring-ai/filesystem/FileSystemService'
 
 const app = new TokenRingApp({
   config: {
-    cdn: {
-      providers: {
-        s3CDN: {
-          type: 's3',
-          bucket: 'cdn-bucket',
+    s3: {
+      accounts: {
+        storage: {
+          bucket: 'my-bucket',
           region: 'us-west-2',
+          endpoint: 'https://s3.amazonaws.com',
           accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
-        }
-      }
-    },
-    filesystem: {
-      providers: {
-        s3Files: {
-          type: 's3',
-          bucketName: 'files-bucket',
-          clientConfig: { region: 'us-west-2' }
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          cdn: {
+            publicUrl: 'https://cdn.example.com'
+          },
+          filesystem: {}
         }
       }
     }
@@ -614,32 +606,24 @@ await app.start()
 
 // Access the registered providers
 const cdnService = await app.getService(CDNService)
-const cdnProvider = cdnService.getProvider('s3CDN')
+const cdnProvider = cdnService.getProvider('storage')
 
 const fileSystemService = await app.getService(FileSystemService)
-const fsProvider = fileSystemService.getFileSystemProvider('s3Files')
+const fsProvider = fileSystemService.getFileSystemProvider('storage')
 ```
 
-### Error Handling
+### Error Handling Examples
 
 ```typescript
 import { S3FileSystemProvider } from '@tokenring-ai/s3'
 
 const provider = new S3FileSystemProvider({
-  bucketName: 'my-bucket',
-  clientConfig: { region: 'us-east-1' }
+  bucket: 'my-bucket',
+  region: 'us-east-1',
+  endpoint: 'https://s3.amazonaws.com',
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
 })
-
-try {
-  // This will throw if file doesn't exist
-  const content = await provider.readFile('nonexistent.txt', 'utf8')
-} catch (error: any) {
-  if (error.name === 'NoSuchKey' || error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
-    console.log('File not found')
-  } else {
-    console.error('S3 error:', error.message)
-  }
-}
 
 // Check existence before operations
 if (await provider.exists('file.txt')) {
@@ -653,17 +637,16 @@ if (await provider.exists('file.txt')) {
 import { S3FileSystemProvider } from '@tokenring-ai/s3'
 
 const provider = new S3FileSystemProvider({
-  bucketName: 'my-bucket',
-  clientConfig: { region: 'us-east-1' }
+  bucket: 'my-bucket',
+  region: 'us-east-1',
+  endpoint: 'https://s3.amazonaws.com',
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
 })
 
 // Convert relative to absolute
 const absolute = provider.relativeOrAbsolutePathToAbsolutePath('docs/readme.md')
 console.log(absolute) // s3://my-bucket/docs/readme.md
-
-// Convert absolute to relative
-const relative = provider.relativeOrAbsolutePathToRelativePath('s3://my-bucket/docs/readme.md')
-console.log(relative) // docs/readme.md
 
 // Path normalization
 const normalized = provider.relativeOrAbsolutePathToAbsolutePath('path/../file.txt')
@@ -673,18 +656,58 @@ console.log(normalized) // s3://my-bucket/file.txt
 try {
   provider.relativeOrAbsolutePathToAbsolutePath('../../file.txt')
 } catch (error) {
-  console.error(error.message) // Invalid path attempts to traverse above bucket root
+  console.error(error.message)
+  // "Invalid path: ../../file.txt attempts to traverse above bucket root."
 }
 ```
 
 ## Configuration
 
+### Environment Variables
+
+The plugin supports loading S3 accounts from environment variables using the
+following pattern (where `N` is an optional numeric suffix):
+
+| Variable | Description |
+|----------|-------------|
+| `S3_BUCKET` / `S3_BUCKET1` / `S3_BUCKET2` | Bucket name (triggers account creation) |
+| `S3_REGION` / `S3_REGION1` | AWS region (required when bucket is set) |
+| `S3_ACCESS_KEY_ID` / `S3_ACCESS_KEY_ID1` | Access key ID (required when bucket is set) |
+| `S3_SECRET_ACCESS_KEY` / `S3_SECRET_ACCESS_KEY1` | Secret access key (required when bucket is set) |
+| `S3_ACCOUNT_NAME` / `S3_ACCOUNT_NAME1` | Account name (defaults to `S3` or `S3 N`) |
+| `S3_CDN_BASE_URL` / `S3_CDN_BASE_URL1` | Enables CDN for the account when set |
+| `S3_CDN_PUBLIC_URL` / `S3_CDN_PUBLIC_URL1` | CDN public URL (required when CDN is enabled) |
+| `S3_FILESYSTEM` / `S3_FILESYSTEM1` | Enables filesystem for the account when set |
+
+**Note:** When configuring CDN via environment variables, both `S3_CDN_BASE_URL{N}` and `S3_CDN_PUBLIC_URL{N}` must be set.
+
+**Important:** The `endpoint` field is required for each S3 account but is not currently loaded from environment variables. It must be provided in the configuration object directly.
+
+### Configuration Example
+
+```yaml
+s3:
+  accounts:
+    main:
+      bucket: "my-bucket"
+      region: "us-east-1"
+      accessKeyId: "AKIAIOSFODNN7EXAMPLE"
+      secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+      endpoint: "https://s3.amazonaws.com"
+      cdn:
+        publicUrl: "https://cdn.example.com"
+      filesystem: {}
+```
+
 ### S3FileSystemProviderOptions
 
 ```typescript
 interface S3FileSystemProviderOptions {
-  bucketName: string
-  clientConfig?: Record<string, unknown>
+  bucket: string
+  endpoint: string
+  region: string
+  accessKeyId: string
+  secretAccessKey: string
 }
 ```
 
@@ -692,23 +715,29 @@ interface S3FileSystemProviderOptions {
 
 ```typescript
 {
-  bucketName: 'my-bucket',
-  clientConfig: {
-    region: 'us-east-1',
-    // Other AWS SDK client options
-  }
+  bucket: 'my-bucket',
+  endpoint: 'https://s3.amazonaws.com',
+  region: 'us-east-1',
+  accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+  secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
 }
 ```
+
+**Type Notes:**
+
+- `S3FileSystemProviderOptions`: Input type for configuration (z.infer)
+- `ParsedS3FileSystemProviderOptions`: Output type after Zod validation (z.output)
 
 ### S3CDNProviderOptions
 
 ```typescript
 interface S3CDNProviderOptions {
   bucket: string
+  endpoint: string
   region: string
   accessKeyId: string
   secretAccessKey: string
-  baseUrl?: string
+  publicUrl: string
 }
 ```
 
@@ -717,42 +746,52 @@ interface S3CDNProviderOptions {
 ```typescript
 {
   bucket: 'my-cdn-bucket',
+  endpoint: 'https://s3.amazonaws.com',
   region: 'us-east-1',
   accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
   secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
-  baseUrl: 'https://cdn.example.com' // Optional
+  publicUrl: 'https://cdn.example.com'
 }
 ```
+
+**Type Notes:**
+
+- `S3CDNProviderOptions`: Input type for configuration (z.input)
+- `ParsedS3CDNProviderOptions`: Output type after Zod validation (z.output)
 
 ## Integration
 
 ### With CDN Service
 
-The package integrates with `@tokenring-ai/cdn` by providing an implementation of the `CDNProvider` interface. When
-configured via the plugin, S3CDNProvider instances are automatically registered with the CDNService.
+The package integrates with `@tokenring-ai/cdn` by providing an implementation
+of the `CDNProvider` interface. When configured via the plugin, S3CDNProvider
+instances are automatically registered with the CDNService.
 
 **Registration Flow:**
 
-1. Plugin receives configuration with `cdn.providers` section
-2. For each provider with `type: 's3'`, creates `S3CDNProvider` instance
-3. Registers provider with CDNService using the provider name
+1. Plugin receives configuration with `s3.accounts` section
+2. For each account with `cdn` configured, creates `S3CDNProvider` instance
+3. Registers provider with CDNService using the account name
 
 ### With File System Service
 
-The package integrates with `@tokenring-ai/filesystem` by implementing the `FileSystemProvider` interface. When
-configured via the plugin, S3FileSystemProvider instances are automatically registered with the FileSystemService.
+The package integrates with `@tokenring-ai/filesystem` by implementing the
+`FileSystemProvider` interface. When configured via the plugin,
+S3FileSystemProvider instances are automatically registered with the
+FileSystemService.
 
 **Registration Flow:**
 
-1. Plugin receives configuration with `filesystem.providers` section
-2. For each provider with `type: 's3'`, creates `S3FileSystemProvider` instance
-3. Registers provider with FileSystemService using the provider name
+1. Plugin receives configuration with `s3.accounts` section
+2. For each account with `filesystem` configured, creates
+   `S3FileSystemProvider` instance
+3. Registers provider with FileSystemService using the account name
 
 ### Plugin Installation
 
 1. Install the package: `bun install @tokenring-ai/s3`
-2. Import the plugin: `import s3Plugin from '@tokenring-ai/s3'`
-3. Configure S3 providers in your app configuration
+2. Import the plugin: `import s3Plugin from '@tokenring-ai/s3/plugin'`
+3. Configure S3 accounts in your app configuration under `s3.accounts`
 4. Register the plugin: `app.registerPlugin(s3Plugin)`
 5. Start the app: `await app.start()`
 
@@ -800,16 +839,16 @@ This package uses `vitest` for unit testing.
 
 ```bash
 # Run tests
-bun test
+bun run test
 
 # Run tests in watch mode
-bun test:watch
+bun run test:watch
 
 # Run tests with coverage
-bun test:coverage
+bun run test:coverage
 
 # Type check
-bun build
+bun run build
 ```
 
 ### Development
@@ -817,22 +856,23 @@ bun build
 1. Clone the repository
 2. Install dependencies: `bun install`
 3. Make changes to the source files
-4. Run tests: `bun test`
-5. Type check: `bun build`
+4. Run tests: `bun run test`
+5. Type check: `bun run build`
 
-## Dependencies
+## Package Dependencies
 
 ### Peer Dependencies
 
-- `@tokenring-ai/cdn: 0.2.0`
-- `@tokenring-ai/filesystem: 0.2.0`
+- `@tokenring-ai/cdn: workspace:*`
+- `@tokenring-ai/filesystem: workspace:*`
 
-### Dependencies
+### Runtime Dependencies
 
-- `@aws-sdk/client-s3: ^3.1017.0`
-- `@tokenring-ai/agent: 0.2.0`
-- `@tokenring-ai/app: 0.2.0`
-- `zod: ^4.3.6`
+- `@tokenring-ai/app: workspace:*`
+- `zod: ^4.4.3`
+
+The S3 client is provided by Bun's built-in `S3Client` (from `bun`), so no
+separate AWS SDK dependency is required.
 
 ### Dev Dependencies
 
@@ -844,8 +884,7 @@ bun build
 - `@tokenring-ai/cdn` - Core CDN service and provider interface
 - `@tokenring-ai/filesystem` - Core filesystem service and provider interface
 - `@tokenring-ai/app` - Base application framework with plugin system
-- `@tokenring-ai/agent` - Agent orchestration system
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+MIT License - see LICENSE file for details.
