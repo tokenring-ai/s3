@@ -82,7 +82,6 @@ const S3FileSystemProviderOptionsSchema: z.ZodType<S3FileSystemProviderOptions>;
 // Exported from package:
 // - S3FileSystemProviderOptions (z.infer - input type)
 // - S3FileSystemProviderOptionsSchema (validation schema)
-// - ParsedS3FileSystemProviderOptions (z.output - parsed/validated type)
 // - S3FileSystemProvider (class)
 ```
 
@@ -123,7 +122,8 @@ await provider.writeFile('path/to/file.txt', 'content or buffer')
 
 // Read file content (overloaded)
 const content = await provider.readFile('path/to/file.txt', 'utf8')
-// Returns: string (with encoding) or Buffer (with 'buffer' or no encoding)
+// Returns: string (with text encoding), Buffer (with 'buffer'),
+//   or Buffer | null (with no encoding)
 
 // Append to a file (creates file if it doesn't exist)
 await provider.appendFile('path/to/file.txt', 'additional content')
@@ -163,6 +163,7 @@ const stats = await provider.stat('path/to/file.txt')
 // Create a directory (S3 uses prefixes, so this is virtual)
 await provider.createDirectory('path/to/directory')
 // Returns: true
+// Throws: Error if path exists and is a file
 
 // Get directory tree listing (async generator)
 for await (const path of provider.getDirectoryTree('path/to/directory')) {
@@ -170,9 +171,20 @@ for await (const path of provider.getDirectoryTree('path/to/directory')) {
 }
 // Yields: string (full S3 key path)
 
+// With options
+for await (const path of provider.getDirectoryTree(
+  'path/to/directory',
+  { recursive: false, ignoreFilter: (key) => !key.endsWith('.txt') }
+)) {
+  console.log(path)
+}
+// recursive: boolean (default true) - include nested directories
+// ignoreFilter: (key: string) => boolean - filter entries by S3 key
+
 // Copy files
 await provider.copy('source.txt', 'destination.txt', { overwrite: true })
 // Returns: true
+// Throws: Error if destination exists and overwrite is false/undefined
 
 // Rename files (implemented as copy + delete)
 await provider.rename('old-name.txt', 'new-name.txt')
@@ -195,7 +207,8 @@ await provider.rename('old-name.txt', 'new-name.txt')
   limited
 - Directories are virtual (created as prefixes)
 - `createDirectory()` only validates that the path does not already exist as a
-  file; it does not create an actual directory object
+  file; it does not create an actual directory object. Throws an error if the
+  path exists and is a file.
 
 ### S3CDNProvider
 
@@ -223,7 +236,6 @@ const S3CDNProviderOptionsSchema: z.ZodType<S3CDNProviderOptions>;
 // Exported from package:
 // - S3CDNProviderOptions (z.input - input type)
 // - S3CDNProviderOptionsSchema (validation schema)
-// - ParsedS3CDNProviderOptions (z.output - parsed/validated type)
 // - S3CDNProvider (class)
 ```
 
@@ -256,12 +268,14 @@ const result = await provider.upload(buffer, {
 //   id: string;
 //   metadata?: Record<string, string>;
 // }
+// Note: If filename is not provided, a key is auto-generated using
+//   Date.now() and a random string
 
 // Delete by URL
 const deleteResult = await provider.delete('https://cdn.example.com/file.txt')
 // Returns: DeleteResult {
 //   success: boolean;
-//   message: string;
+//   message: string; // On failure: "Failed to delete: <error message>"
 // }
 
 // Check if resource exists
@@ -364,7 +378,7 @@ interface PackageConfig {
 }
 ```
 
-### Environment Variables
+### Environment Variable Configuration
 
 The plugin supports loading S3 accounts from environment variables. The
 following pattern is used (where `N` is an optional numeric suffix, defaulting
@@ -377,10 +391,13 @@ to empty string):
 | `S3_ACCESS_KEY_ID` / `S3_ACCESS_KEY_ID1` | Access key ID (required) |
 | `S3_SECRET_ACCESS_KEY` / `S3_SECRET_ACCESS_KEY1` | Secret access key (required) |
 | `S3_ACCOUNT_NAME` / `S3_ACCOUNT_NAME1` | Account name (defaults to `S3` or `S3 N`) |
-| `S3_ENDPOINT` / `S3_ENDPOINT1` | S3 endpoint URL (required) |
 | `S3_CDN_BASE_URL` / `S3_CDN_BASE_URL1` | Enables CDN for the account when set |
 | `S3_CDN_PUBLIC_URL` / `S3_CDN_PUBLIC_URL1` | CDN public URL (required if CDN enabled) |
 | `S3_FILESYSTEM` / `S3_FILESYSTEM1` | Enables filesystem for the account when set |
+
+**Note:** The `endpoint` field is required for each S3 account but is not loaded
+from environment variables. It must be provided in the configuration object
+directly.
 
 ### Plugin Registration
 
@@ -414,7 +431,11 @@ await app.start()
 
 **Note:** The plugin uses `waitForService` to ensure services are available
 before registering providers. Providers are only registered if their respective
-configuration sections (`cdn` or `filesystem`) are present on the account.
+configuration sections (`cdn` or `filesystem`) are present on the account. If
+no accounts are configured (from either config or environment variables), the
+plugin returns without registering anything. When loading accounts from
+environment variables, missing required values (`S3_REGION`, `S3_ACCESS_KEY_ID`,
+`S3_SECRET_ACCESS_KEY`) will throw an error.
 
 ## Schema Documentation
 
@@ -478,6 +499,16 @@ Filesystem-specific configuration for an S3 account (currently empty schema).
 ```typescript
 const S3AccountFilesystemSchema = z.object({});
 ```
+
+### Exported Schema Types
+
+The following types are exported from the package schema:
+
+- `S3Config`: The parsed configuration type (`z.output<typeof S3ConfigSchema>`)
+- `S3Account`: A single S3 account configuration (`z.output<typeof S3AccountSchema>`)
+- `S3AccountCDN`: CDN configuration for an S3 account (`z.output<typeof S3AccountCDNSchema>`)
+- `S3AccountFilesystem`: Filesystem configuration for an S3 account
+  (`z.output<typeof S3AccountFilesystemSchema>`)
 
 ## Usage Examples
 
@@ -554,7 +585,7 @@ const uploadResult = await cdn.upload(imageBuffer, {
   contentType: 'image/png',
   metadata: {
     author: 'John Doe',
-    tags: ['avatar', 'profile']
+    category: 'avatar'
   }
 })
 
@@ -663,7 +694,7 @@ try {
 
 ## Configuration
 
-### Environment Variables
+### Configuration Environment Variables
 
 The plugin supports loading S3 accounts from environment variables using the
 following pattern (where `N` is an optional numeric suffix):
@@ -725,8 +756,10 @@ interface S3FileSystemProviderOptions {
 
 **Type Notes:**
 
-- `S3FileSystemProviderOptions`: Input type for configuration (z.infer)
-- `ParsedS3FileSystemProviderOptions`: Output type after Zod validation (z.output)
+- `S3FileSystemProviderOptions`: Input type for configuration (z.infer), exported
+  from the package
+- `ParsedS3FileSystemProviderOptions`: Internal output type after Zod validation
+  (z.output), used by the constructor but not exported
 
 ### S3CDNProviderOptions
 
@@ -756,8 +789,10 @@ interface S3CDNProviderOptions {
 
 **Type Notes:**
 
-- `S3CDNProviderOptions`: Input type for configuration (z.input)
-- `ParsedS3CDNProviderOptions`: Output type after Zod validation (z.output)
+- `S3CDNProviderOptions`: Input type for configuration (z.input), exported from
+  the package
+- `ParsedS3CDNProviderOptions`: Internal output type after Zod validation
+  (z.output), used by the constructor but not exported
 
 ## Integration
 
